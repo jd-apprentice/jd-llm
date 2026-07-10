@@ -1,2 +1,7 @@
-# llm-setup
-Configuration, setup and benchmarks for my local LLMs
+# About
+
+Repository to store all sort of experiments regarding local LLMs.
+
+## Benchmarks
+
+See [BENCHMARKS.md](BENCHMARKS.md).
