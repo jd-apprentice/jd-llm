@@ -216,8 +216,8 @@ run_model_benchmarks() {
             "$valid_runs" "$RUNS" \
             "$formatted_time" \
             "$tokens_display" \
-            "$(format_tps \"$avg_pp_tps\")" \
-            "$(format_tps \"$avg_tg_tps\")" \
+            "$(format_tps "$avg_pp_tps")" \
+            "$(format_tps "$avg_tg_tps")" \
             "$formatted_ttft"
     done
 
