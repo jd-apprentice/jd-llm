@@ -1,106 +1,33 @@
 # Benchmarks
 
-## System Information
+Testing with [localscore.ai](https://localscore.ai)
 
-```sh
-OS: Arch Linux x86_64
-Kernel: Linux 7.0.12-arch1-1
-CPU: AMD Ryzen 5 2600 (12) @ 3.65 GHz
-GPU: NVIDIA GeForce GTX 1660 [Discrete] (5754 MiB VRAM, CC 7.5 Turing, no tensor cores)
-Memory: 8GB DDR4 2400 MHz x1
-```
+## Results
 
----
+### Llama 3.2 1B Instruct - Q4_K - Medium (GTX 1660 SUPER 6GB) - https://www.localscore.ai/result/3891
 
-## Build Configuration for CUDA
+| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
+|------|-----|----------|------------------|--------|--------|------|
+| pp1024+tg16 | 1/1 | 1.57 s | 1040 / 1040 | 863.03 | 41.44 | 1.21 s |
+| pp4096+tg256 | 1/1 | 25.47 s | 4352 / 4352 | 624.37 | 13.54 | 6.63 s |
+| pp2048+tg256 | 1/1 | 13.40 s | 2304 / 2304 | 763.60 | 23.89 | 2.72 s |
+| pp2048+tg768 | 1/1 | 38.12 s | 2816 / 2816 | 761.42 | 21.68 | 2.73 s |
+| pp1024+tg1024 | 1/1 | 33.75 s | 2048 / 2048 | 851.45 | 31.46 | 1.23 s |
+| pp1280+tg3072 | 1/1 | 162.44 s | 4352 / 4352 | 827.85 | 19.09 | 1.57 s |
+| pp384+tg1152 | 1/1 | 26.38 s | 1536 / 1536 | 922.21 | 44.37 | 430.23 ms |
+| pp64+tg1024 | 1/1 | 16.73 s | 1088 / 1088 | 924.53 | 61.45 | 77.24 ms |
+| pp16+tg1536 | 1/1 | 30.17 s | 1552 / 1552 | 348.61 | 50.98 | 53.12 ms |
 
-Clone the repository and navigate to the `llama.cpp` directory:
+### Meta Llama 3.1 8B Instruct - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3892
 
-```bash
-git clone https://github.com/ggerganov/llama.cpp
-cd llama.cpp
-```
-
-**Required dependencies:**
-- CMake ≥ 3.20
-- CUDA Toolkit (installed at `/opt/cuda`)
-- GCC/G++ 15
-
-**Build command:**
-```bash
-cmake -B build \
-  -DGGML_CUDA=ON \
-  -DGGML_CUDA_FORCE_MMQ=ON \
-  -DCMAKE_CUDA_ARCHITECTURES="75-virtual;80-virtual" \
-  -DCUDAToolkit_ROOT=/opt/cuda \
-  -DCMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc \
-  -DCMAKE_C_COMPILER=/usr/bin/gcc-15 \
-  -DCMAKE_CXX_COMPILER=/usr/bin/g++-15
-```
-
-**Compile command:**
-```bash
-cmake --build build --config Release -j
-```
-
-> **Note:** This GPU lacks tensor cores (Turing architecture, CC 7.5). Performance is suboptimal for tensor core-optimized kernels. The flags `-DGGML_CUDA_FORCE_MMQ=ON` and `-DCMAKE_CUDA_ARCHITECTURES="75-virtual;80-virtual"` force Pascal (MMQ) kernels on Turing architecture for better performance.
-
----
-
-## Model Family Comparison (Q4_K_M / Q4_0, CUDA, NGL=-1)
-
-| Model Family | Params | Quant | Size | pp512 | pp16k | pp32k | tg128 | tg4k | VRAM |
-|--------------|--------|-------|------|-------|-------|-------|-------|------|------|
-| **FableForge** | 1.5B | Q4_K_M | 0.9 GB | **715** | **313** | **199** | **131** | **122** | ~1.0 GB |
-| **Qwen3.5-Coder** | 4.3B | Q4_0 | 2.4 GB | 253 | 198 | 163 | 52 | 50 | ~2.5 GB |
-| **Qwen3.5-GLM-Distill** | 9.0B | Q4_K_M | 5.2 GB | 142 | — | — | 30 | 29 | ~5.3 GB |
-
-*All: CUDA, NGL=-1 (full offload), MMQ forced on Turing (CC 7.5), avg of 3 runs*
-
----
-
-## Detailed Benchmarks
-
-### FableForge-1.5B (fableforge-ai/FableForge-1.5B:Q4_K_M)
-
-| Metric | pp512 | pp16k | pp32k | tg128 | tg4k |
-|--------|-------|-------|-------|-------|------|
-| **tok/s** | 714.6 ± 0.2 | 313.3 | 198.9 | 130.7 ± 0.0 | 121.8 ± 0.1 |
-| **Config** | CUDA, NGL=-1, MMQ forced | | | | |
-
----
-
-### Qwen3.5-4B-Coder (jica98/qwen3.5-4B-super-coder:Q4_0)
-
-| Metric | pp512 | pp16k | pp32k | tg128 | tg4k |
-|--------|-------|-------|-------|-------|------|
-| **tok/s** | 253.3 ± 0.5 | 198.4 | 163.2 | 51.9 ± 0.0 | 50.3 |
-| **Config** | CUDA, NGL=-1, MMQ forced | | | | |
-
----
-
-### Qwen3.5-9B-GLM5.1-Distill-v1 (Jackrong/Qwen3.5-9B-GLM5.1-Distill-v1:Q4_K_M)
-
-| Metric | pp512 | pp16k | pp32k | tg128 | tg4k |
-|--------|-------|-------|-------|-------|------|
-| **tok/s** | 141.9 ± 0.5 | — | — | 29.9 ± 0.0 | 29.4 |
-| **Config** | CUDA, NGL=-1, MMQ forced | | | | |
-
----
-
-## Test Definitions
-
-| Test | Description | Purpose |
-|------|-------------|---------|
-| **pp512** | Prompt processing (512 tokens) | Prompt ingestion throughput (short context) |
-| **pp16k** | Prompt processing (16,384 tokens) | Long-context prompt ingestion throughput |
-| **pp32k** | Prompt processing (32,768 tokens) | Very long-context prompt ingestion throughput |
-| **tg128** | Token generation (128 tokens) | Token generation throughput (short) |
-| **tg4k** | Token generation (4,096 tokens) | Sustained token generation throughput |
-
----
-
-## References
-
-- [Understanding Tensor Cores](https://www.digitalocean.com/community/tutorials/understanding-tensor-cores)
-- [llama.cpp CUDA Build Guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
+| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
+|------|-----|----------|------------------|--------|--------|------|
+| pp1024+tg16 | 1/1 | 8.94 s | 1040 / 1040 | 137.02 | 10.90 | 7.57 s |
+| pp4096+tg256 | 1/1 | 104.12 s | 4352 / 4352 | 112.72 | 3.78 | 36.60 s |
+| pp2048+tg256 | 1/1 | 55.39 s | 2304 / 2304 | 126.20 | 6.54 | 16.38 s |
+| pp2048+tg768 | 1/1 | 144.38 s | 2816 / 2816 | 126.19 | 5.99 | 16.38 s |
+| pp1024+tg1024 | 1/1 | 127.96 s | 2048 / 2048 | 134.97 | 8.51 | 7.68 s |
+| pp1280+tg3072 | 1/1 | 586.78 s | 4352 / 4352 | 133.02 | 5.32 | 9.73 s |
+| pp384+tg1152 | 1/1 | 101.84 s | 1536 / 1536 | 140.99 | 11.62 | 2.78 s |
+| pp64+tg1024 | 1/1 | 66.61 s | 1088 / 1088 | 142.14 | 15.48 | 486.47 ms |
+| pp16+tg1536 | 1/1 | 116.94 s | 1552 / 1552 | 103.39 | 13.15 | 188.10 ms |
