@@ -34,6 +34,8 @@ These includes the prerequisites and build instructions for running the benchmar
 - Git
 - llama.cpp
 - CUDA / ROCm
+- jq
+- bc
 
 ```bash
 git clone https://github.com/jd-apprentice/llm-setup.git

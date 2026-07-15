@@ -46,6 +46,20 @@ Testing with [localscore.ai](https://localscore.ai)
 | pp64+tg1024 | 1/1 | 35.79 s | 1088 / 1088 | 289.05 | 28.79 | 241.82 ms |
 | pp16+tg1536 | 1/1 | 62.70 s | 1552 / 1552 | 186.41 | 24.53 | 104.46 ms |
 
+### LFM2.5 8B A1B - Q4_0 - Medium (NVIDIA GeForce GTX 1660 6GB) - https://localhost
+
+| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
+|------|-----|----------|------------------|--------|--------|------|
+| pp1024+tg16 | 1/1 |   |   /   |   |   |   |
+| pp4096+tg256 | 1/1 | 32.84 s | 4352 / 4352 | 132.27 | 135.98 | 30.96 s |
+| pp2048+tg256 | 1/1 | 17.14 s | 2304 / 2304 | 134.16 | 135.80 | 15.26 s |
+| pp2048+tg768 | 1/1 | 20.94 s | 2816 / 2816 | 134.16 | 135.27 | 15.26 s |
+| pp1024+tg1024 | 1/1 | 15.18 s | 2048 / 2048 | 134.59 | 135.09 | 7.60 s |
+| pp1280+tg3072 | 1/1 | 32.64 s | 4352 / 4352 | 134.78 | 132.71 | 9.49 s |
+| pp384+tg1152 | 1/1 | 11.42 s | 1536 / 1536 | 134.14 | 134.56 | 2.86 s |
+| pp64+tg1024 | 1/1 | 8.09 s | 1088 / 1088 | 123.54 | 135.09 | 510.00 ms |
+| pp16+tg1536 | 1/1 |   |   /   |   |   |   |
+
 ### Meta Llama 3.1 8B Instruct - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3892
 
 | Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
