@@ -4,7 +4,6 @@
 
 Repository to store all sort of experiments regarding local LLMs. Ideas are being tracked [HERE](https://github.com/jd-apprentice/jd-llm/issues/1)
 
-
 ## System Information
 
 ```sh
@@ -17,7 +16,7 @@ Memory: 8GB DDR4 2400 MHz x1
 
 ## Local Setup
 
-If you want to run the benchmarks like the ones in `BENCHMARKS.md`, follow the instructions below.
+If you want to run the benchmarks like the ones in `BENCHMARKS.md`, follow the instructions below, else try [localScore](https://github.com/jd-apprentice/localScore).
 
 ### Prerequisites
 
@@ -75,3 +74,4 @@ See [BENCHMARKS.md](BENCHMARKS.md).
 - [Understanding Tensor Cores](https://www.digitalocean.com/community/tutorials/understanding-tensor-cores)
 - [llama.cpp CUDA Build Guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
 - [localscore.ai - Benchmark Tool](https://localscore.ai)
+- [Custom Git Hooks](https://stackoverflow.com/questions/39332407/git-hooks-applying-git-config-core-hookspath)

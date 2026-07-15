@@ -23,3 +23,5 @@ if [ -n "$INVALID_TITLES" ]; then
     echo "### Phi 4 Mini Instruct 4.5B - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3908"
     exit 1
 fi
+
+echo "All H3 titles in BENCHMARKS.md follow the required format."
