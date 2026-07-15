@@ -18,7 +18,7 @@ Testing with [localscore.ai](https://localscore.ai)
 | pp64+tg1024 | 1/1 | 16.73 s | 1088 / 1088 | 924.53 | 61.45 | 77.24 ms |
 | pp16+tg1536 | 1/1 | 30.17 s | 1552 / 1552 | 348.61 | 50.98 | 53.12 ms |
 
-### FableForge-1.5B-Q4_K_M -  Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3906
+### FableForge 1.5B - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3906
 
 | Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
 |------|-----|----------|------------------|--------|--------|------|
