@@ -18,20 +18,6 @@ Testing with [localscore.ai](https://localscore.ai)
 | pp64+tg1024 | 1/1 | 16.73 s | 1088 / 1088 | 924.53 | 61.45 | 77.24 ms |
 | pp16+tg1536 | 1/1 | 30.17 s | 1552 / 1552 | 348.61 | 50.98 | 53.12 ms |
 
-### Meta Llama 3.1 8B Instruct - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3892
-
-| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
-|------|-----|----------|------------------|--------|--------|------|
-| pp1024+tg16 | 1/1 | 8.94 s | 1040 / 1040 | 137.02 | 10.90 | 7.57 s |
-| pp4096+tg256 | 1/1 | 104.12 s | 4352 / 4352 | 112.72 | 3.78 | 36.60 s |
-| pp2048+tg256 | 1/1 | 55.39 s | 2304 / 2304 | 126.20 | 6.54 | 16.38 s |
-| pp2048+tg768 | 1/1 | 144.38 s | 2816 / 2816 | 126.19 | 5.99 | 16.38 s |
-| pp1024+tg1024 | 1/1 | 127.96 s | 2048 / 2048 | 134.97 | 8.51 | 7.68 s |
-| pp1280+tg3072 | 1/1 | 586.78 s | 4352 / 4352 | 133.02 | 5.32 | 9.73 s |
-| pp384+tg1152 | 1/1 | 101.84 s | 1536 / 1536 | 140.99 | 11.62 | 2.78 s |
-| pp64+tg1024 | 1/1 | 66.61 s | 1088 / 1088 | 142.14 | 15.48 | 486.47 ms |
-| pp16+tg1536 | 1/1 | 116.94 s | 1552 / 1552 | 103.39 | 13.15 | 188.10 ms |
-
 ### FableForge-1.5B-Q4_K_M -  Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3906
 
 | Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
@@ -46,7 +32,7 @@ Testing with [localscore.ai](https://localscore.ai)
 | pp64+tg1024 | 1/1 | 19.49 s | 1088 / 1088 | 646.58 | 52.82 | 109.71 ms |
 | pp16+tg1536 | 1/1 | 34.48 s | 1552 / 1552 | 251.52 | 44.63 | 73.36 ms |
 
-### Phi 4 Mini Instruct - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3908
+### Phi 4 Mini Instruct 4.5B - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3908
 
 | Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
 |------|-----|----------|------------------|--------|--------|------|
@@ -59,3 +45,17 @@ Testing with [localscore.ai](https://localscore.ai)
 | pp384+tg1152 | 1/1 | 54.22 s | 1536 / 1536 | 285.21 | 21.79 | 1.38 s |
 | pp64+tg1024 | 1/1 | 35.79 s | 1088 / 1088 | 289.05 | 28.79 | 241.82 ms |
 | pp16+tg1536 | 1/1 | 62.70 s | 1552 / 1552 | 186.41 | 24.53 | 104.46 ms |
+
+### Meta Llama 3.1 8B Instruct - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3892
+
+| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |
+|------|-----|----------|------------------|--------|--------|------|
+| pp1024+tg16 | 1/1 | 8.94 s | 1040 / 1040 | 137.02 | 10.90 | 7.57 s |
+| pp4096+tg256 | 1/1 | 104.12 s | 4352 / 4352 | 112.72 | 3.78 | 36.60 s |
+| pp2048+tg256 | 1/1 | 55.39 s | 2304 / 2304 | 126.20 | 6.54 | 16.38 s |
+| pp2048+tg768 | 1/1 | 144.38 s | 2816 / 2816 | 126.19 | 5.99 | 16.38 s |
+| pp1024+tg1024 | 1/1 | 127.96 s | 2048 / 2048 | 134.97 | 8.51 | 7.68 s |
+| pp1280+tg3072 | 1/1 | 586.78 s | 4352 / 4352 | 133.02 | 5.32 | 9.73 s |
+| pp384+tg1152 | 1/1 | 101.84 s | 1536 / 1536 | 140.99 | 11.62 | 2.78 s |
+| pp64+tg1024 | 1/1 | 66.61 s | 1088 / 1088 | 142.14 | 15.48 | 486.47 ms |
+| pp16+tg1536 | 1/1 | 116.94 s | 1552 / 1552 | 103.39 | 13.15 | 188.10 ms |
