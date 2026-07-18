@@ -41,7 +41,7 @@ These includes the prerequisites and build instructions for running the benchmar
 git clone https://github.com/jd-apprentice/llm-setup.git
 cd llm-setup
 chmod +x scripts/bench.sh
-./scripts/bench.sh -r 3 > results.md
+./scripts/bench.sh tiny --output BENCHMARKS.md
 ```
 
 ### Turing Setup
