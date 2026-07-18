@@ -14,16 +14,48 @@ PROGRESS="${PROGRESS:-1}"  # 1 = show progress, 0 = silent
 # Model path (folder or .gguf file) - set via -m/--model
 MODEL_PATH=""
 
+# Group definitions: name|section_header|start_idx|end_idx
+MODEL_GROUPS=(
+    "tiny|1B Models|0|3"
+    "small|2-3B Models|4|6"
+    "medium|4B Models|7|10"
+    "large|7-8B Models|11|13"
+    "offload|9B Models|14|18"
+)
+
+# NGL values to sweep for the offload group
+OFFLOAD_NGL_VALUES=(0 10 20 32 -1)
+
 # Model configurations: "hf_model_id|label|ngl|quant|params|size_gb"
 MODELS=(
-    "fableforge-ai/FableForge-1.5B:Q4_K_M|FableForge-1.5B|-1|Q4_K_M|1.5B|0.9"
-    "jica98/qwen3.5-4B-super-coder:Q4_0|Qwen3.5-4B-Coder|-1|Q4_0|4.3B|2.4"
-    "jica98/qwen3.5-4B-super-coder:Q4_K_M|Qwen3.5-4B-Coder-Q4KM|-1|Q4_K_M|4.3B|2.5"
-    "jica98/qwen3.5-4B-super-coder:Q5_K_M|Qwen3.5-4B-Coder-Q5KM|-1|Q5_K_M|4.3B|3.0"
-    "jica98/qwen3.5-4B-super-coder:Q6_K|Qwen3.5-4B-Coder-Q6K|-1|Q6_K|4.3B|3.5"
-    "jica98/qwen3.5-4B-super-coder:IQ4_XS|Qwen3.5-4B-Coder-IQ4XS|-1|IQ4_XS|4.3B|2.2"
-    #"Jackrong/Qwen3.5-9B-GLM5.1-Distill-v1:Q4_K_M|Qwen3.5-9B-GLM-Distill|-1|Q4_K_M|9.0B|5.2"
-    #"Jackrong/Qwen3.5-9B-GLM5.1-Distill-v1:Q5_K_M|Qwen3.5-9B-GLM-Distill-Q5KM|-1|Q5_K_M|9.0B|6.0"
+    # tiny - 1B models (indices 0-3)
+    "bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M|Llama 3.2 1B Instruct|-1|Q4_K_M|1B|0.8"
+    "fableforge-ai/FableForge-1.5B:Q4_K_M|FableForge 1.5B|-1|Q4_K_M|1.5B|0.9"
+    "unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M|Qwen3.5 0.8B|-1|Q4_K_M|0.8B|0.5"
+    "unsloth/gemma-3-1b-it-GGUF:Q4_K_M|Gemma 3 1B|-1|Q4_K_M|1B|0.7"
+
+    # small - 2-3B models (indices 4-6)
+    "google/gemma-2-2b-it-GGUF:Q4_K_M|Gemma 2 2B Instruct|-1|Q4_K_M|2B|1.6"
+    "Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M|Qwen2.5 3B Instruct|-1|Q4_K_M|3B|1.9"
+    "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M|Llama 3.2 3B Instruct|-1|Q4_K_M|3B|2.0"
+
+    # medium - 4B models (indices 7-10)
+    "unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M|Phi-4-mini-instruct|-1|Q4_K_M|4B|2.5"
+    "microsoft/Phi-3-mini-4k-instruct-gguf:Q4_K_M|Phi-3-mini-4k-instruct|-1|Q4_K_M|4B|2.2"
+    "bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Q4_K_M|Qwen3 4B Instruct|-1|Q4_K_M|4B|2.6"
+    "unsloth/Nemotron-3-Nano-4B-Instruct-GGUF:Q4_K_M|Nemotron 3 Nano 4B|-1|Q4_K_M|4B|2.5"
+
+    # large - 7-8B models (indices 11-13)
+    "unsloth/Meta-Llama-3.1-8B-Instruct-GGUF:Q4_K_M|Llama 3.1 8B Instruct|-1|Q4_K_M|8B|4.7"
+    "Qwen/Qwen2.5-7B-Instruct-GGUF:Q4_K_M|Qwen2.5 7B Instruct|-1|Q4_K_M|7B|4.4"
+    "MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M|Mistral 7B Instruct v0.3|-1|Q4_K_M|7B|4.4"
+
+    # offload - 9B models (indices 14-18)
+    "Qwen/Qwen3-8B-GGUF:Q4_K_M|Qwen3 8B|-1|Q4_K_M|8B|5.0"
+    "bartowski/gemma-2-9b-it-GGUF:Q4_K_M|Gemma 2 9B Instruct|-1|Q4_K_M|9B|5.8"
+    "unsloth/Qwen3.5-9B-GGUF:Q4_K_M|Qwen3.5 9B|-1|Q4_K_M|9B|5.6"
+    "tensorblock/glm-4-9b-hf-GGUF:Q4_K_M|GLM-4 9B|-1|Q4_K_M|9B|6.2"
+    "LiquidAI/LFM2.5-8B-A1B-GGUF:Q4_K_M|LFM2.5 8B A1B|-1|Q4_K_M|8.3B|5.3"
 )
 
 # Benchmark test configurations matching BENCHMARKS.md exactly
@@ -42,7 +74,14 @@ BENCHMARKS=(
 
 usage() {
     cat <<EOF
-Usage: $0 [options] [model_index...]
+Usage: $0 [options] [model_index|group_name...]
+
+Groups (defined in MODEL_GROUPS array):
+  tiny     1B models (indices 0-3)
+  small    2-3B models (indices 4-6)
+  medium   4B models (indices 7-10)
+  large    7-8B models (indices 11-13)
+  offload  9B models with NGL sweep: 0,10,20,32,-1 (indices 14-17)
 
 Options:
   -b, --bin BIN        llama binary (default: llama, must be in PATH on target)
@@ -53,6 +92,7 @@ Options:
   -m, --model PATH     Path to local model folder or .gguf file
       --model-label L  Custom label for local model (default: folder/file name)
       --model-ngl N    GPU layers to offload for local model (default: -1 = all)
+  -o, --output FILE    Save output to FILE and print to stdout (default: stdout only)
   -l, --list           List available models
   -h, --help           Show this help
 
@@ -270,16 +310,25 @@ run_benchmark_json_local() {
 
 run_model_benchmarks() {
     local model_idx="$1"
+    local ngl_override="${2:-}"  # optional NGL override for header
     local model_config="${MODELS[model_idx]}"
 
     IFS='|' read -r hf_id label ngl quant params size_gb <<< "$model_config"
+
+    # Use override NGL for the actual run if provided
+    local actual_ngl="$ngl"
+    [[ -n "$ngl_override" ]] && actual_ngl="$ngl_override"
 
     local gpu_name
     gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown GPU")
     local vram
     vram=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown VRAM")
 
-    echo "### $label - $quant - $gpu_name ($vram)"
+    if [[ -n "$ngl_override" ]]; then
+        echo "### $label - $quant - $gpu_name ($vram) - NGL=$ngl_override"
+    else
+        echo "### $label - $quant - $gpu_name ($vram)"
+    fi
     echo ""
     echo "| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |"
     echo "|------|-----|----------|------------------|--------|--------|------|"
@@ -306,7 +355,7 @@ run_model_benchmarks() {
             fi
 
             local json_output
-            json_output=$(run_benchmark_json "$hf_id" "$pp" "$tg" "$ngl" "$run") || continue
+            json_output=$(run_benchmark_json "$hf_id" "$pp" "$tg" "$actual_ngl" "$run") || continue
 
             local parsed
             parsed=$(parse_benchmark_json "$json_output") || continue
@@ -359,10 +408,57 @@ run_model_benchmarks() {
     echo ""
 }
 
+# Global task list: each entry is "model_idx|section_header|ngl_override"
+TASKS=()
+
+# Resolve arguments into TASKS array.
+# Groups expand to their model indices; offload adds NGL sweep entries.
+resolve_tasks() {
+    local args=("$@")
+    TASKS=()
+
+    for arg in "${args[@]}"; do
+        local resolved=0
+        for group in "${MODEL_GROUPS[@]}"; do
+            IFS='|' read -r gname section start end <<< "$group"
+            if [[ "$arg" == "$gname" ]]; then
+                for ((i=start; i<=end; i++)); do
+                    if [[ "$gname" == "offload" ]]; then
+                        for ngl in "${OFFLOAD_NGL_VALUES[@]}"; do
+                            TASKS+=("$i|$section|$ngl")
+                        done
+                    else
+                        TASKS+=("$i|$section|")
+                    fi
+                done
+                resolved=1
+                break
+            fi
+        done
+        if [[ "$resolved" -eq 0 ]]; then
+            if [[ "$arg" =~ ^[0-9]+$ ]] && [[ "$arg" -ge 0 ]] && [[ "$arg" -lt "${#MODELS[@]}" ]]; then
+                local section=""
+                for group in "${MODEL_GROUPS[@]}"; do
+                    IFS='|' read -r gname gsection gstart gend <<< "$group"
+                    if [[ "$arg" -ge "$gstart" && "$arg" -le "$gend" ]]; then
+                        section="$gsection"
+                        break
+                    fi
+                done
+                TASKS+=("$arg|$section|")
+            else
+                echo "ERROR: Unknown model index or group: $arg" >&2
+                exit 1
+            fi
+        fi
+    done
+}
+
 main() {
     local model_indices=()
     local model_label=""
     local model_ngl="-1"
+    local output_file=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -374,6 +470,12 @@ main() {
             -m|--model) MODEL_PATH="$2"; shift 2 ;;
             --model-label) model_label="$2"; shift 2 ;;
             --model-ngl) model_ngl="$2"; shift 2 ;;
+            -o|--output)
+                if [[ $# -ge 2 && -n "$2" && "${2#-}" = "$2" ]]; then
+                    output_file="$2"; shift 2
+                else
+                    echo "ERROR: --output requires a filename argument" >&2; exit 1
+                fi ;;
             -l|--list) list_models ;;
             -h|--help) usage ;;
             *) model_indices+=("$1"); shift ;;
@@ -398,38 +500,81 @@ main() {
 
     # If model path provided via -m/--model, run benchmarks on that model only
     if [[ -n "$MODEL_PATH" ]]; then
-        # Verify model path exists
         if [[ ! -e "$MODEL_PATH" ]]; then
             echo "ERROR: Model path does not exist: $MODEL_PATH" >&2
             exit 1
         fi
 
-        echo "# Benchmarks"
-        echo ""
-        echo "Testing with [localscore.ai](https://localscore.ai)"
-        echo ""
-        echo "## Results"
-        echo ""
+        # Write header if output file is new
+        if [[ -n "$output_file" && ! -f "$output_file" ]]; then
+            {
+                echo "# Benchmarks"
+                echo ""
+                echo "## Results"
+                echo ""
+            } > "$output_file"
+        fi
 
-        run_local_model_benchmarks "$MODEL_PATH" "$model_label" "$model_ngl"
+        {
+            echo "---"
+            echo ""
+            echo "## $(date '+%Y-%m-%d %H:%M') - local model"
+            echo ""
+
+            run_local_model_benchmarks "$MODEL_PATH" "$model_label" "$model_ngl"
+        } > >(if [[ -n "$output_file" ]]; then tee -a "$output_file"; else cat; fi)
         exit 0
     fi
 
-    # Default: run all models if none specified
+    # Default: run all groups if no args specified
     if [[ ${#model_indices[@]} -eq 0 ]]; then
-        model_indices=("${!MODELS[@]}")
+        model_indices=(tiny small medium large offload)
     fi
 
-    echo "# Benchmarks"
-    echo ""
-    echo "Testing with [localscore.ai](https://localscore.ai)"
-    echo ""
-    echo "## Results"
-    echo ""
+    # Resolve args to task list
+    resolve_tasks "${model_indices[@]}"
 
-    for idx in "${model_indices[@]}"; do
-        run_model_benchmarks "$idx"
+    # Build a group label from the args for the timestamp header
+    local run_label=""
+    for arg in "${model_indices[@]}"; do
+        [[ -n "$run_label" ]] && run_label+=", "
+        run_label+="$arg"
     done
+
+    # Write header if output file is new
+    if [[ -n "$output_file" && ! -f "$output_file" ]]; then
+        {
+            echo "# Benchmarks"
+            echo ""
+            echo "## Results"
+            echo ""
+        } > "$output_file"
+    fi
+
+    # Run all tasks, writing to stdout and optionally appending to output file
+    {
+        echo "---"
+        echo ""
+        echo "## $(date '+%Y-%m-%d %H:%M') - $run_label"
+        echo ""
+
+        local current_section=""
+        for task in "${TASKS[@]}"; do
+            IFS='|' read -r idx section ngl_override <<< "$task"
+
+            if [[ -n "$section" && "$section" != "$current_section" ]]; then
+                echo "## $section"
+                echo ""
+                current_section="$section"
+            fi
+
+            if [[ -n "$ngl_override" ]]; then
+                run_model_benchmarks "$idx" "$ngl_override"
+            else
+                run_model_benchmarks "$idx"
+            fi
+        done
+    } > >(if [[ -n "$output_file" ]]; then tee -a "$output_file"; else cat; fi)
 }
 
 main "$@"

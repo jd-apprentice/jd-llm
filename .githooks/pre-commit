@@ -1,27 +1,69 @@
 #!/bin/bash
+set -euo pipefail
 
-## Check naming format of the H3 titles in BENCHMARKS.md
-# Expected: ### <MODEL> - <QUANTIZATION> - <SIZE> (GPU) - <BENCH_URL>
+RED='\033[0;31m'
+NC='\033[0m'
 
-# This regex ensures:
-# 1. Starts with ###
-# 2. Model name (can contain spaces)
-# 3. Quantization (no spaces)
-# 4. Size (no spaces)
-# 5. GPU inside parentheses
-# 6. Benchmark URL
+echo "--- pre-commit: running checks ---"
 
-INVALID_TITLES=$(perl -ne 'print if /^### / && !/^### (.*?) - (\S+?) - (\S+?) \((.*?)\) - (https?:\/\/\S+)$/' BENCHMARKS.md)
-
-if [ -n "$INVALID_TITLES" ]; then
-    echo "Error: The following H3 titles in BENCHMARKS.md do not follow the required format:"
-    echo "$INVALID_TITLES"
-    echo ""
-    echo "Expected format:"
-    echo "### <MODEL> - <QUANTIZATION> - <SIZE> (GPU) - <BENCH_URL>"
-    echo "Example:"
-    echo "### Phi 4 Mini Instruct 4.5B - Q4_K - Medium (NVIDIA GeForce GTX 1660 6GB) - https://www.localscore.ai/result/3908"
-    exit 1
+# --- ShellCheck on staged .sh files ---
+if command -v shellcheck >/dev/null 2>&1; then
+    while IFS= read -r file; do
+        echo "  shellcheck: $file"
+        shellcheck "$file"
+    done < <(git diff --cached --name-only --diff-filter=ACM | grep '\.sh$' || true)
+else
+    echo "  WARNING: shellcheck not found, skipping shellcheck"
 fi
 
-echo "All H3 titles in BENCHMARKS.md follow the required format."
+# --- BENCHMARKS.md validation ---
+if git diff --cached --name-only --diff-filter=ACM | grep -q 'BENCHMARKS.md'; then
+    echo "  checking BENCHMARKS.md format..."
+
+    BENCHMARKS_FILE=$(git diff --cached --name-only --diff-filter=ACM | grep 'BENCHMARKS.md' | head -1)
+    STAGED_CONTENT=$(git show ":$BENCHMARKS_FILE" 2>/dev/null || cat "$BENCHMARKS_FILE")
+
+    ERRORS=0
+
+    # Check H3 title format: ### MODEL - QUANT - GPU (VRAM) - URL
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^### ]]; then
+            if ! [[ "$line" =~ ^###\ .+\ -\ .+\ -\ .+\ \(.*\)\ -\ https?:// ]]; then
+                echo -e "  ${RED}ERROR: H3 title format invalid:${NC} $line"
+                ERRORS=$((ERRORS + 1))
+            fi
+        fi
+    done <<< "$STAGED_CONTENT"
+
+    # Check table header
+    EXPECTED_HEADER="| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |"
+    HEADER_LINE=$(echo "$STAGED_CONTENT" | grep '| Test |' | head -1)
+    if [[ -n "$HEADER_LINE" && "$HEADER_LINE" != "$EXPECTED_HEADER" ]]; then
+        echo -e "  ${RED}ERROR: table header mismatch${NC}"
+        echo "    expected: $EXPECTED_HEADER"
+        echo "    got:      $HEADER_LINE"
+        ERRORS=$((ERRORS + 1))
+    fi
+
+    # Check test order (the 9 fixed BENCHMARKS tests)
+    TESTS=("pp1024+tg16" "pp4096+tg256" "pp2048+tg256" "pp2048+tg768" "pp1024+tg1024" "pp1280+tg3072" "pp384+tg1152" "pp64+tg1024" "pp16+tg1536")
+    TEST_INDEX=0
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\|[[:space:]]*(pp[0-9]+\+tg[0-9]+) ]]; then
+            TEST_NAME="${BASH_REMATCH[1]}"
+            if [[ "$TEST_INDEX" -lt "${#TESTS[@]}" && "$TEST_NAME" != "${TESTS[$TEST_INDEX]}" ]]; then
+                echo -e "  ${RED}ERROR: test order: expected '${TESTS[$TEST_INDEX]}', got '$TEST_NAME'${NC}"
+                ERRORS=$((ERRORS + 1))
+            fi
+            TEST_INDEX=$((TEST_INDEX + 1))
+        fi
+    done <<< "$STAGED_CONTENT"
+
+    if [[ "$ERRORS" -gt 0 ]]; then
+        echo -e "  ${RED}FAILED: $ERRORS error(s) in BENCHMARKS.md${NC}"
+        exit 1
+    fi
+    echo "  BENCHMARKS.md format OK"
+fi
+
+echo "--- pre-commit: all checks passed ---"
