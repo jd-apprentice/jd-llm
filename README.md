@@ -11,7 +11,7 @@ OS: Arch Linux x86_64
 Kernel: Linux 7.0.12-arch1-1
 CPU: AMD Ryzen 5 2600
 GPU: NVIDIA GeForce GTX 1660
-Memory: 8GB DDR4 2400 MHz x1
+Memory: 8GB DDR4 2400 MHz x2
 ```
 
 ## Simple Setup
