@@ -44,7 +44,20 @@ chmod +x scripts/bench.sh
 ./scripts/bench.sh tiny --output BENCHMARKS.md
 ```
 
+### Local Development
+
+Dependencies:
+- Shellcheck
+
+Make sure to setup hooks with
+
+```sh
+git config --local core.hooksPath .githooks/
+```
+
 ### Turing Setup
+
+Check [issue](https://github.com/jd-apprentice/jd-llm/issues/4) for more information.
 
 If you are using a Turing-based GPU (e.g. GTX 1660) which lacks tensor cores, you may encounter the following limitation:
 
@@ -67,7 +80,7 @@ cd llama.cpp
 cmake -B build \
   -DGGML_CUDA=ON \
   -DGGML_CUDA_FORCE_MMQ=ON \
-  -DCMAKE_CUDA_ARCHITECTURES="75-virtual;80-virtual" \
+  -DCMAKE_CUDA_ARCHITECTURES="80-virtual" \
   -DCUDAToolkit_ROOT=/opt/cuda \
   -DCMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc \
   -DCMAKE_C_COMPILER=/usr/bin/gcc-15 \
@@ -76,16 +89,19 @@ cmake -B build \
 
 **Compile command:**
 ```bash
-cmake --build build --config Release -j
+cmake --build build --config Release -j 4
 ```
+
+The binary itself stores in `$PWD/build/bin/llama-bench` use it with `./build/bin/llama-bench`.
 
 ## Benchmarks
 
-See [BENCHMARKS.md](BENCHMARKS.md).
+See [BENCHMARKS.md](BENCHMARKS.md) for native results.
 
 ## References
 
-- [Understanding Tensor Cores](https://www.digitalocean.com/community/tutorials/understanding-tensor-cores)
-- [llama.cpp CUDA Build Guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
-- [localscore.ai - Benchmark Tool](https://localscore.ai)
-- [Custom Git Hooks](https://stackoverflow.com/questions/39332407/git-hooks-applying-git-config-core-hookspath)
+- [understanding tensor cores](https://www.digitalocean.com/community/tutorials/understanding-tensor-cores)
+- [cmake build](https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-j)
+- [llama.cpp CUDA build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
+- [localscore.ai - benchmark tool](https://localscore.ai)
+- [custom git hooks](https://stackoverflow.com/questions/39332407/git-hooks-applying-git-config-core-hookspath)

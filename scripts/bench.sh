@@ -84,7 +84,7 @@ Groups (defined in MODEL_GROUPS array):
   offload  9B models with NGL sweep: 0,10,20,32,-1 (indices 14-17)
 
 Options:
-  -b, --bin BIN        llama binary (default: llama, must be in PATH on target)
+  -b, --bin BIN        llama binary (default: llama; command name or executable path)
   -r, --runs N         Number of runs per benchmark (default: 1)
   -t, --threads N      CPU threads (default: nproc)
   -B, --batch N        Batch size (default: 1)
@@ -454,6 +454,31 @@ resolve_tasks() {
     done
 }
 
+resolve_llama_bin() {
+    if [[ "$LLAMA_BIN" == */* ]]; then
+        if [[ ! -e "$LLAMA_BIN" ]]; then
+            echo "ERROR: llama binary path does not exist: $LLAMA_BIN" >&2
+            exit 1
+        fi
+        if [[ ! -f "$LLAMA_BIN" ]]; then
+            echo "ERROR: llama binary path is not a file: $LLAMA_BIN" >&2
+            exit 1
+        fi
+        if [[ ! -x "$LLAMA_BIN" ]]; then
+            echo "ERROR: llama binary is not executable: $LLAMA_BIN" >&2
+            exit 1
+        fi
+        return
+    fi
+
+    local resolved_bin
+    resolved_bin=$(command -v "$LLAMA_BIN" 2>/dev/null) || {
+        echo "ERROR: $LLAMA_BIN not found in PATH" >&2
+        exit 1
+    }
+    LLAMA_BIN="$resolved_bin"
+}
+
 main() {
     local model_indices=()
     local model_label=""
@@ -483,10 +508,7 @@ main() {
     done
 
     # Check llama binary exists
-    if ! command -v "$LLAMA_BIN" >/dev/null 2>&1; then
-        echo "ERROR: $LLAMA_BIN not found in PATH" >&2
-        exit 1
-    fi
+    resolve_llama_bin
 
     # Check for required dependencies
     if ! command -v jq >/dev/null 2>&1; then
