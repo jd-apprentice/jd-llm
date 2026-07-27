@@ -92,5 +92,4 @@ See [BENCHMARKS.md](BENCHMARKS.md) for native results.
 - [understanding tensor cores](https://www.digitalocean.com/community/tutorials/understanding-tensor-cores)
 - [cmake build](https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-j)
 - [llama.cpp CUDA build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
-- [localscore.ai - benchmark tool](https://localscore.ai)
 - [custom git hooks](https://stackoverflow.com/questions/39332407/git-hooks-applying-git-config-core-hookspath)
