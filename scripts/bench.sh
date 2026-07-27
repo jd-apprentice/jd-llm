@@ -41,9 +41,9 @@ MODELS=(
 
     # medium - 4B models (indices 7-10)
     "unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M|Phi-4-mini-instruct|-1|Q4_K_M|4B|2.5"
-    "microsoft/Phi-3-mini-4k-instruct-gguf:Q4_K_M|Phi-3-mini-4k-instruct|-1|Q4_K_M|4B|2.2"
     "bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Q4_K_M|Qwen3 4B Instruct|-1|Q4_K_M|4B|2.6"
     "unsloth/Nemotron-3-Nano-4B-Instruct-GGUF:Q4_K_M|Nemotron 3 Nano 4B|-1|Q4_K_M|4B|2.5"
+    "prism-ml/Bonsai-8B-gguf:Q1_0|Bonsai 8B|-1|Q1_0|8B|1.1"
 
     # large - 7-8B models (indices 11-13)
     "unsloth/Meta-Llama-3.1-8B-Instruct-GGUF:Q4_K_M|Llama 3.1 8B Instruct|-1|Q4_K_M|8B|4.7"
@@ -92,7 +92,7 @@ Options:
   -m, --model PATH     Path to local model folder or .gguf file
       --model-label L  Custom label for local model (default: folder/file name)
       --model-ngl N    GPU layers to offload for local model (default: -1 = all)
-  -o, --output FILE    Save output to FILE and print to stdout (default: stdout only)
+  -o, --output FILE    Save output to FILE and print to stdout; single named groups replace existing blocks in place
   -l, --list           List available models
   -h, --help           Show this help
 
@@ -187,6 +187,86 @@ format_time() {
 format_tps() {
     local tps="$1"
     printf "%.2f" "$tps"
+}
+
+ensure_output_file_header() {
+    local output_file="$1"
+
+    if [[ ! -f "$output_file" ]]; then
+        {
+            echo "# Benchmarks"
+            echo ""
+            echo "## Results"
+            echo ""
+        } > "$output_file"
+    fi
+}
+
+append_run_block_to_output() {
+    local content_file="$1"
+    local output_file="$2"
+
+    if grep -Eq '^## [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} - ' "$output_file"; then
+        printf '\n---\n\n' >> "$output_file"
+    fi
+
+    cat "$content_file" >> "$output_file"
+}
+
+replace_group_block_in_output() {
+    local content_file="$1"
+    local output_file="$2"
+    local group_name="$3"
+    local temp_file
+    temp_file=$(mktemp)
+
+    awk -v group_name="$group_name" -v replacement_file="$content_file" '
+        function print_replacement(    line) {
+            while ((getline line < replacement_file) > 0) {
+                print line
+            }
+            close(replacement_file)
+        }
+
+        $0 ~ "^## [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9] - " group_name "$" {
+            print_replacement()
+            skipping = 1
+            replaced = 1
+            next
+        }
+
+        skipping {
+            if ($0 == "---") {
+                skipping = 0
+                print $0
+            }
+            next
+        }
+
+        { print }
+    ' "$output_file" > "$temp_file"
+
+    mv "$temp_file" "$output_file"
+}
+
+write_run_block() {
+    local content_file="$1"
+    local output_file="$2"
+    local replace_group="${3:-}"
+
+    if [[ -n "$output_file" ]]; then
+        ensure_output_file_header "$output_file"
+
+        if [[ -n "$replace_group" ]] && grep -Eq "^## [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} - ${replace_group}$" "$output_file"; then
+            replace_group_block_in_output "$content_file" "$output_file" "$replace_group"
+        else
+            append_run_block_to_output "$content_file" "$output_file"
+        fi
+    fi
+
+    echo "---"
+    echo ""
+    cat "$content_file"
 }
 
 # Run benchmarks on a local model path (folder or .gguf file)
@@ -527,24 +607,18 @@ main() {
             exit 1
         fi
 
-        # Write header if output file is new
-        if [[ -n "$output_file" && ! -f "$output_file" ]]; then
-            {
-                echo "# Benchmarks"
-                echo ""
-                echo "## Results"
-                echo ""
-            } > "$output_file"
-        fi
+        local content_file
+        content_file=$(mktemp)
 
         {
-            echo "---"
-            echo ""
             echo "## $(date '+%Y-%m-%d %H:%M') - local model"
             echo ""
 
             run_local_model_benchmarks "$MODEL_PATH" "$model_label" "$model_ngl"
-        } > >(if [[ -n "$output_file" ]]; then tee -a "$output_file"; else cat; fi)
+        } > "$content_file"
+
+        write_run_block "$content_file" "$output_file"
+        rm -f "$content_file"
         exit 0
     fi
 
@@ -563,20 +637,21 @@ main() {
         run_label+="$arg"
     done
 
-    # Write header if output file is new
-    if [[ -n "$output_file" && ! -f "$output_file" ]]; then
-        {
-            echo "# Benchmarks"
-            echo ""
-            echo "## Results"
-            echo ""
-        } > "$output_file"
+    local replace_group=""
+    if [[ ${#model_indices[@]} -eq 1 ]]; then
+        for group in "${MODEL_GROUPS[@]}"; do
+            IFS='|' read -r gname _ _ _ <<< "$group"
+            if [[ "${model_indices[0]}" == "$gname" ]]; then
+                replace_group="$gname"
+                break
+            fi
+        done
     fi
 
-    # Run all tasks, writing to stdout and optionally appending to output file
+    local content_file
+    content_file=$(mktemp)
+
     {
-        echo "---"
-        echo ""
         echo "## $(date '+%Y-%m-%d %H:%M') - $run_label"
         echo ""
 
@@ -596,7 +671,10 @@ main() {
                 run_model_benchmarks "$idx"
             fi
         done
-    } > >(if [[ -n "$output_file" ]]; then tee -a "$output_file"; else cat; fi)
+    } > "$content_file"
+
+    write_run_block "$content_file" "$output_file" "$replace_group"
+    rm -f "$content_file"
 }
 
 main "$@"

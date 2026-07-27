@@ -90,7 +90,8 @@ for GTX 1660 SUPER 6GB with llama.cpp CUDA.
 
 ## Output
 
-- Append results to BENCHMARKS.md via `--output BENCHMARKS.md`
+- Save results to BENCHMARKS.md via `--output BENCHMARKS.md`
+- Single named groups (`tiny`, `small`, `medium`, `large`, `offload`) replace their existing block in place; other invocations append a new block
 - Each run is timestamped: `## YYYY-MM-DD HH:MM - <group>`
 - Keep table format unchanged
 - Include NGL in header for offload models
