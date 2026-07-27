@@ -14,17 +14,6 @@ GPU: NVIDIA GeForce GTX 1660
 Memory: 8GB DDR4 2400 MHz x2
 ```
 
-## Simple Setup
-
-[localScore](https://github.com/jd-apprentice/localScore) docs are quite straightforward
-
-```bash
-chmod +x localscore-0.9.3
-./localscore-0.9.3 -m path/to/model.gguf
-```
-
-To download a model I'm using huggingface, for example [LiquidAI/LFM2.5-8B-A1B-GGUF](https://huggingface.co/LiquidAI/LFM2.5-8B-A1B-GGUF) on the right there is a button that says "Use this model" and you can download it from various sources, the manual one would be go into "Files and versions" and download the `.gguf` file.
-
 ## Custom Setup (WIP)
 
 These includes the prerequisites and build instructions for running the benchmarks with `bench.sh`.
