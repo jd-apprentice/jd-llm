@@ -25,10 +25,12 @@ if git diff --cached --name-only --diff-filter=ACM | grep -q 'BENCHMARKS.md'; th
 
     ERRORS=0
 
-    # Check H3 title format: ### MODEL - QUANT - GPU (VRAM) - URL
+    # Check H3 title format:
+    #   ### MODEL - QUANT - GPU (VRAM)
+    #   ### MODEL - QUANT - GPU (VRAM) - NGL=<value>
     while IFS= read -r line; do
         if [[ "$line" =~ ^### ]]; then
-            if ! [[ "$line" =~ ^###\ .+\ -\ .+\ -\ .+\ \(.*\)\ -\ https?:// ]]; then
+            if ! [[ "$line" =~ ^###\ .+\ -\ .+\ -\ .+\ \([^()]+\)(\ -\ NGL=-?[0-9]+)?$ ]]; then
                 echo -e "  ${RED}ERROR: H3 title format invalid:${NC} $line"
                 ERRORS=$((ERRORS + 1))
             fi
