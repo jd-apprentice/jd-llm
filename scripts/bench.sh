@@ -40,13 +40,14 @@ MODELS=(
     "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M|Llama 3.2 3B Instruct|-1|Q4_K_M|3B|2.0"
 
     # medium - 4B models (indices 7-10)
-    "unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M|Phi-4-mini-instruct|-1|Q4_K_M|4B|2.5"
-    "bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Q4_K_M|Qwen3 4B Instruct|-1|Q4_K_M|4B|2.6"
-    "unsloth/Nemotron-3-Nano-4B-Instruct-GGUF:Q4_K_M|Nemotron 3 Nano 4B|-1|Q4_K_M|4B|2.5"
-    "prism-ml/Bonsai-8B-gguf:Q1_0|Bonsai 8B|-1|Q1_0|8B|1.1"
+    #"unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M|Phi-4-mini-instruct|-1|Q4_K_M|4B|2.5"
+    #"bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Q4_K_M|Qwen3 4B Instruct|-1|Q4_K_M|4B|2.6"
+    #"unsloth/Nemotron-3-Nano-4B-Instruct-GGUF:Q4_K_M|Nemotron 3 Nano 4B|-1|Q4_K_M|4B|2.5"
+    #"prism-ml/Bonsai-8B-gguf:Q1_0|Bonsai 8B|-1|Q1_0|8B|1.1"
+    "prism-ml/Bonsai-27B-gguf:Q1_0|Bonsai 27B|-1|Q1_0|27B|1.8"
+    "deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M|Ornith 1.0 9B|-1|Q4_K_M|9B|5.6"
 
     # large - 7-8B models (indices 11-13)
-    "unsloth/Meta-Llama-3.1-8B-Instruct-GGUF:Q4_K_M|Llama 3.1 8B Instruct|-1|Q4_K_M|8B|4.7"
     "Qwen/Qwen2.5-7B-Instruct-GGUF:Q4_K_M|Qwen2.5 7B Instruct|-1|Q4_K_M|7B|4.4"
     "MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M|Mistral 7B Instruct v0.3|-1|Q4_K_M|7B|4.4"
 
