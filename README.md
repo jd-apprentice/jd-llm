@@ -7,10 +7,10 @@ Repository to store all sort of experiments regarding local LLMs. Ideas are bein
 ## System Information
 
 ```sh
-OS: Arch Linux x86_64
-Kernel: Linux 7.0.12-arch1-1
+OS: Proxmox 9
+Kernel: Linux 7.0.14-12-pve
 CPU: AMD Ryzen 5 2600
-GPU: NVIDIA GeForce GTX 1660
+GPU: NVIDIA Tesla P40
 Memory: 8GB DDR4 2400 MHz x2
 ```
 
