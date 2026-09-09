@@ -7,7 +7,7 @@ set -euo pipefail
 # Configuration
 LLAMA_BIN="${LLAMA_BIN:-llama}"
 RUNS="${RUNS:-1}"
-BATCH="${BATCH:-1}"
+BATCH="${BATCH:-512}"
 THREADS="${THREADS:-$(nproc)}"
 PROGRESS="${PROGRESS:-1}"  # 1 = show progress, 0 = silent
 
@@ -88,7 +88,7 @@ Options:
   -b, --bin BIN        llama binary (default: llama; command name or executable path)
   -r, --runs N         Number of runs per benchmark (default: 1)
   -t, --threads N      CPU threads (default: nproc)
-  -B, --batch N        Batch size (default: 1)
+  -B, --batch N        Batch size (default: 512)
   -p, --progress 0|1   Show progress indicators (default: 1)
   -m, --model PATH     Path to local model folder or .gguf file
       --model-label L  Custom label for local model (default: folder/file name)
@@ -190,6 +190,33 @@ format_tps() {
     printf "%.2f" "$tps"
 }
 
+# Describe the GPU(s) present, e.g. "Tesla P40" or "Tesla P40 x2". Used as a
+# history key: results are only replaced when group, day AND GPU all match.
+gpu_label() {
+    local -a names
+    local total name i same=1
+    mapfile -t names < <(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null)
+    total=${#names[@]}
+    [[ $total -eq 0 ]] && { echo "CPU"; return; }
+    name="${names[0]}"
+    for ((i = 1; i < total; i++)); do
+        [[ "${names[i]}" == "$name" ]] || same=0
+    done
+    if [[ $same -eq 0 ]]; then
+        local out=""
+        for n in "${names[@]}"; do
+            out+="${out:+ + }$n"
+        done
+        echo "$out"
+        return
+    fi
+    if [[ $total -eq 1 ]]; then
+        echo "$name"
+    else
+        echo "$name x$total"
+    fi
+}
+
 ensure_output_file_header() {
     local output_file="$1"
 
@@ -218,10 +245,12 @@ replace_group_block_in_output() {
     local content_file="$1"
     local output_file="$2"
     local group_name="$3"
+    local day="$4"
+    local gpu="$5"
     local temp_file
     temp_file=$(mktemp)
 
-    awk -v group_name="$group_name" -v replacement_file="$content_file" '
+    awk -v group_name="$group_name" -v replacement_file="$content_file" -v day="$day" -v gpu="$gpu" '
         function print_replacement(    line) {
             while ((getline line < replacement_file) > 0) {
                 print line
@@ -229,7 +258,7 @@ replace_group_block_in_output() {
             close(replacement_file)
         }
 
-        $0 ~ "^## [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9] - " group_name "$" {
+        $0 ~ "^## " day " [0-9][0-9]:[0-9][0-9] - " group_name " \\(" && index($0, "(" gpu ")") {
             print_replacement()
             skipping = 1
             replaced = 1
@@ -258,8 +287,21 @@ write_run_block() {
     if [[ -n "$output_file" ]]; then
         ensure_output_file_header "$output_file"
 
-        if [[ -n "$replace_group" ]] && grep -Eq "^## [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} - ${replace_group}$" "$output_file"; then
-            replace_group_block_in_output "$content_file" "$output_file" "$replace_group"
+        if [[ -n "$replace_group" ]]; then
+            local today gpu
+            today=$(date '+%Y-%m-%d')
+            gpu=$(gpu_label)
+            if awk -v day="$today" -v g="$replace_group" -v l="$gpu" '
+                    $0 ~ "^## " day " [0-9][0-9]:[0-9][0-9] - " g " \\(" && index($0, "(" l ")") {
+                        found = 1
+                        exit
+                    }
+                    END { exit found ? 0 : 1 }
+                ' "$output_file"; then
+                replace_group_block_in_output "$content_file" "$output_file" "$replace_group" "$today" "$gpu"
+            else
+                append_run_block_to_output "$content_file" "$output_file"
+            fi
         else
             append_run_block_to_output "$content_file" "$output_file"
         fi
@@ -612,7 +654,7 @@ main() {
         content_file=$(mktemp)
 
         {
-            echo "## $(date '+%Y-%m-%d %H:%M') - local model"
+            echo "## $(date '+%Y-%m-%d %H:%M') - local model ($(gpu_label))"
             echo ""
 
             run_local_model_benchmarks "$MODEL_PATH" "$model_label" "$model_ngl"
@@ -653,7 +695,7 @@ main() {
     content_file=$(mktemp)
 
     {
-        echo "## $(date '+%Y-%m-%d %H:%M') - $run_label"
+        echo "## $(date '+%Y-%m-%d %H:%M') - $run_label ($(gpu_label))"
         echo ""
 
         local current_section=""

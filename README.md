@@ -8,7 +8,7 @@ Repository to store all sort of experiments regarding local LLMs. Ideas are bein
 
 ```sh
 OS: Proxmox 9
-Kernel: Linux 7.0.14-12-pve
+Kernel: Linux 7.0.14-15-pve
 CPU: AMD Ryzen 5 2600
 GPU: NVIDIA Tesla P40
 Memory: 8GB DDR4 2400 MHz x2
@@ -44,44 +44,33 @@ Make sure to setup hooks with
 git config --local core.hooksPath .githooks/
 ```
 
-### Turing Setup
+### Pascal Setup (Tesla P40)
 
-Check [issue](https://github.com/jd-apprentice/jd-llm/issues/4) for more information.
+The Tesla P40 is a Pascal GPU (compute capability 6.1), so llama.cpp must be compiled from source with CUDA support for that architecture.
 
-If you are using a Turing-based GPU (e.g. GTX 1660) which lacks tensor cores, you may encounter the following limitation:
+Relevant constraints:
 
-> **Note:** This GPU lacks tensor cores (Turing architecture, CC 7.5). Performance is suboptimal for tensor core-optimized kernels. The flags `-DGGML_CUDA_FORCE_MMQ=ON` and `-DCMAKE_CUDA_ARCHITECTURES="75-virtual;80-virtual"` force Pascal (MMQ) kernels on Turing architecture for better performance.
-
-In order to fix this, you have to compile llama.cpp from source with the flags `-DGGML_CUDA_FORCE_MMQ=ON` and `-DCMAKE_CUDA_ARCHITECTURES="75-virtual;80-virtual"` like the comment says.
+- The NVIDIA `580` driver branch is the **last** one supporting Pascal and tops out at CUDA 13.0.
+- CUDA Toolkit **13.x dropped support for architectures older than sm_70**, so the build must use a CUDA 12.x toolkit (12.8 in this setup). The 580 driver runs CUDA 12.x applications without issues.
+- The `llama.app` Linux installer only provides CUDA builds compiled against the newest CUDA release, whose minimum driver the `580` branch cannot satisfy. Its probe silently falls back to a CPU-only binary (`llama bench --list-devices` shows no devices) — another reason to build from source.
 
 ```bash
-git clone https://github.com/ggerganov/llama.cpp
+git clone --depth 1 --branch b10826 https://github.com/ggml-org/llama.cpp
 cd llama.cpp
-```
-
-**Required dependencies:**
-- CMake ≥ 3.20
-- CUDA Toolkit (installed at `/opt/cuda`)
-- GCC/G++ 15
-
-**Build command:**
-```bash
 cmake -B build \
   -DGGML_CUDA=ON \
-  -DGGML_CUDA_FORCE_MMQ=ON \
-  -DCMAKE_CUDA_ARCHITECTURES="80-virtual" \
-  -DCUDAToolkit_ROOT=/opt/cuda \
-  -DCMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc \
-  -DCMAKE_C_COMPILER=/usr/bin/gcc-15 \
-  -DCMAKE_CXX_COMPILER=/usr/bin/g++-15
+  -DCMAKE_CUDA_ARCHITECTURES="61" \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target llama-app -j 2
 ```
 
-**Compile command:**
-```bash
-cmake --build build --config Release -j 4
-```
+Notes:
 
-The binary itself stores in `$PWD/build/bin/llama-bench` use it with `./build/bin/llama-bench`.
+- The build produces the unified `llama` binary (`build/bin/llama`) that `bench.sh` relies on (`llama bench ...`). Install it into your PATH with `cp build/bin/llama ~/.local/bin/llama`, and copy the shared libraries (`build/bin/*.so*`) into a library path such as `/usr/local/lib` followed by `ldconfig`.
+- Do **not** run `llama update`: `llama.app` would replace the CUDA build with its CPU-only binary again.
+- Sanity check that the GPU is visible: `llama bench --list-devices` should report `CUDA0: Tesla P40`.
+- Keep `CMAKE_CUDA_ARCHITECTURES="61"` and a CUDA 12.x toolkit when rebuilding with newer llama.cpp releases.
+- `-j 2` avoids OOM during the CUDA compilation on hosts with 4 GB of RAM.
 
 ## Benchmarks
 
@@ -89,7 +78,7 @@ See [BENCHMARKS.md](BENCHMARKS.md) for native results.
 
 ## References
 
-- [understanding tensor cores](https://www.digitalocean.com/community/tutorials/understanding-tensor-cores)
-- [cmake build](https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-j)
 - [llama.cpp CUDA build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
+- [cmake build](https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-j)
 - [custom git hooks](https://stackoverflow.com/questions/39332407/git-hooks-applying-git-config-core-hookspath)
+- [NVIDIA Quadro/Maxwell/Pascal/Volta support plan](https://nvidia.custhelp.com/app/answers/detail/a_id/5706/~/nvidia-quadro-support-plan-for-maxwell%2C-pascal%2C-and-volta-gpus.)
