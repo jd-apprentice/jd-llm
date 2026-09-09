@@ -14,7 +14,7 @@ GPU: NVIDIA Tesla P40
 Memory: 8GB DDR4 2400 MHz x2
 ```
 
-## Custom Setup (WIP)
+## Custom Setup
 
 These includes the prerequisites and build instructions for running the benchmarks with `bench.sh`.
 
@@ -44,7 +44,7 @@ Make sure to setup hooks with
 git config --local core.hooksPath .githooks/
 ```
 
-### Pascal Setup (Tesla P40)
+### Pascal Setup
 
 The Tesla P40 is a Pascal GPU (compute capability 6.1), so llama.cpp must be compiled from source with CUDA support for that architecture.
 
