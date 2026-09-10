@@ -9,7 +9,7 @@ Repository to store all sort of experiments regarding local LLMs. Ideas are bein
 ```sh
 OS: Proxmox 9
 Kernel: Linux 7.0.14-15-pve
-CPU: AMD Ryzen 5 2600
+CPU: AMD Ryzen 5 3400g
 GPU: NVIDIA Tesla P40
 Memory: 8GB DDR4 2400 MHz x2
 ```
