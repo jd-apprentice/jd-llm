@@ -76,6 +76,13 @@ Notes:
 
 See [BENCHMARKS.md](BENCHMARKS.md) for native results.
 
+## Examples
+
+See [examples/](examples/) for projects generated with the local models:
+
+- [veterinary-web](examples/veterinary-web/) — live at [local-llm-example-1.jonathan.com.ar](https://local-llm-example-1.jonathan.com.ar)
+- [retro-games](examples/retro-games/) — live at [local-llm-example-2.jonathan.com.ar](https://local-llm-example-2.jonathan.com.ar)
+
 ## References
 
 - [llama.cpp CUDA build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)

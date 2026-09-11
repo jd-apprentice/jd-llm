@@ -16,8 +16,8 @@ Every example in this directory was created with a single model:
 
 ## Examples
 
-| Example | Type | Description |
-|---------|------|-------------|
-| [retro-games](retro-games/) | Web (React) | An arcade-themed retro games UI with pixel fonts, glow effects, and scanline styling built with React 19 and Tailwind CSS. |
-| [todo-list](todo-list/) | CLI (Bash) | A Bash task manager with commands to add, list, complete, remove, and clear tasks, plus an AI assistant (`./todo.sh ai`). |
-| [veterinary-web](veterinary-web/) | Web (React) | A modern veterinary clinic landing page built with React 19, Tailwind CSS, Vite, and Lucide React. |
+| Example | Type | Description | Live Demo |
+|---------|------|-------------|-----------|
+| [retro-games](retro-games/) | Web (React) | An arcade-themed retro games UI with pixel fonts, glow effects, and scanline styling built with React 19 and Tailwind CSS. | [local-llm-example-2.jonathan.com.ar](https://local-llm-example-2.jonathan.com.ar) |
+| [todo-list](todo-list/) | CLI (Bash) | A Bash task manager with commands to add, list, complete, remove, and clear tasks, plus an AI assistant (`./todo.sh ai`). | — |
+| [veterinary-web](veterinary-web/) | Web (React) | A modern veterinary clinic landing page built with React 19, Tailwind CSS, Vite, and Lucide React. | [local-llm-example-1.jonathan.com.ar](https://local-llm-example-1.jonathan.com.ar) |
