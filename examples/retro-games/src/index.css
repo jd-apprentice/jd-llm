@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-[#06121f] text-slate-100 font-inter;
+}
+
+/* Arcade cabinet scanline bar */
+.cabinet-stand {
+  @apply relative overflow-hidden rounded-t-xl border-b-0;
+}
+
+.cabinet-stand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.25) 2px 4px
+  );
+  pointer-events: none;
+}
