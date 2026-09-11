@@ -6,9 +6,25 @@ Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) runs `ll
 
 ## Hardware (benchmark context)
 
-- GPU: NVIDIA GeForce GTX 1660 (Turing, no tensor cores — see build flags below)
-- CPU: AMD Ryzen 5 2600
-- RAM: 8 GB DDR4
+- OS: Proxmox 9, Kernel Linux 7.0.14-15-pve
+- GPU: NVIDIA Tesla P40 (Pascal, compute capability 6.1, 24 GB VRAM)
+- CPU: AMD Ryzen 5 3400g
+- RAM: 8 GB DDR4 2400 MHz × 2 (dual-channel)
+
+## Prerequisites
+
+- Git
+- llama.cpp (built from source — see build instructions below)
+- CUDA 12.x toolkit
+- jq
+- bc
+
+```bash
+git clone https://github.com/jd-apprentice/llm-setup.git
+cd llm-setup
+chmod +x scripts/bench.sh
+./scripts/bench.sh tiny --output BENCHMARKS.md
+```
 
 ## Lint & verify
 
@@ -51,7 +67,21 @@ Table columns: `Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTF
 - **Model groups**: tiny(0-3), small(4-6), medium(7-10), large(11-13), offload(14-18); see `MODELS` array (lines 30-59)
 - **Offload NGL sweep**: `0,10,20,32,-1` (5 runs per model)
 - **`-o/--output FILE`**: single named groups replace their existing block in-place; all other invocations append. Does NOT overwrite the whole file.
-- **`llama` binary** must be compiled with `-DGGML_CUDA_FORCE_MMQ=ON` and `-DCMAKE_CUDA_ARCHITECTURES="75-virtual;80-virtual"` for this Turing GPU. See README.md for full build instructions.
+- **`llama` binary** must be compiled from source with CUDA 12.x toolkit (12.8) targeting Pascal architecture (`sm_61`). CUDA Toolkit 13.x dropped support for architectures older than sm_70. The NVIDIA `580` driver branch is the last one supporting Pascal and tops out at CUDA 13.0.
+
+Build flags:
+```bash
+cmake -B build \
+  -DGGML_CUDA=ON \
+  -DCMAKE_CUDA_ARCHITECTURES="61" \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target llama-app -j 2
+```
+
+- Install: `cp build/bin/llama ~/.local/bin/llama`, then copy `build/bin/*.so*` to a library path (e.g. `/usr/local/lib`) and run `ldconfig`.
+- Build against `ggml-org/llama.cpp` branch `b10826`: `git clone --depth 1 --branch b10826 https://github.com/ggml-org/llama.cpp`
+- Do **not** run `llama update` — it replaces the CUDA build with a CPU-only binary.
+- Sanity check: `llama bench --list-devices` should report `CUDA0: Tesla P40`.
 
 ## `models/` directory
 
@@ -64,3 +94,10 @@ Conventional commits: `feat(...)`, `fix(...)`, `chore(...)`, `docs(...)`.
 ## Plans
 
 `plans/base.md` — benchmark plan (model groups, time estimates, output conventions). Consult before adding/removing models.
+
+## References
+
+- [llama.cpp CUDA build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
+- [cmake build](https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-j)
+- [custom git hooks](https://stackoverflow.com/questions/39332407/git-hooks-applying-git-config-core-hookspath)
+- [NVIDIA Quadro/Maxwell/Pascal/Volta support plan](https://nvidia.custhelp.com/app/answers/detail/a_id/5706/~/nvidia-quadro-support-plan-for-maxwell%2C-pascal%2C-and-volta-gpus.)
