@@ -1,12 +1,34 @@
 import { Star } from 'lucide-react'
 import { games } from '../assets/games'
+import GamePlayer from './GamePlayer'
+import { useState } from 'react'
 
 const bg = 'bg-[#0b0f1f]/60'
 const card = 'rounded-xl border border-arcade-cyan/20 bg-black/40 p-5 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-arcade-cyan/60'
 
 export default function GamesCatalogo() {
+  const [playingGame, setPlayingGame] = useState(null)
+
   return (
-    <section id="catalogo" className="relative py-20">
+    <div>
+      {/* Modal overlay */}
+      {playingGame && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="relative w-full max-w-2xl">
+            <button
+              onClick={() => setPlayingGame(null)}
+              className="absolute -top-12 right-0 rounded-md bg-white/10 px-3 py-1 font-pixel text-xs text-white transition-all hover:bg-white/20"
+            >
+              ✕ SALIR
+            </button>
+            <div className="rounded-2xl border border-arcade-cyan/30 bg-[#0b0f1f] p-4">
+              <GamePlayer title={playingGame.title} gameId={playingGame.gameId} onClose={() => setPlayingGame(null)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <section id="catalogo" className="relative py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="mb-14 text-center">
           <p className="mb-3 font-pixel text-xs text-arcade-pink">— LO NUEVO EN EL ARCADE —</p>
@@ -47,7 +69,10 @@ export default function GamesCatalogo() {
                   ))}
                   <span className="ml-1 font-pixel text-[10px] text-slate-400">{game.rating}</span>
                 </div>
-                <button className="rounded-md bg-arcade-cyan/15 px-3 py-1.5 font-pixel text-[10px] text-arcade-cyan transition-all hover:bg-arcade-cyan/30">
+                <button
+                  onClick={() => setPlayingGame(game)}
+                  className="rounded-md bg-arcade-cyan/15 px-3 py-1.5 font-pixel text-[10px] text-arcade-cyan transition-all hover:bg-arcade-cyan/30"
+                >
                   JUGAR ▶
                 </button>
               </div>
@@ -56,5 +81,6 @@ export default function GamesCatalogo() {
         </div>
       </div>
     </section>
+    </div>
   )
 }
