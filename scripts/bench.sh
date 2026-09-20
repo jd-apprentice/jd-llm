@@ -1,63 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Automated llama.cpp benchmark runner using `llama bench -hf`
-# Outputs markdown tables matching BENCHMARKS.md format exactly
+# Fixed locale: timings math and markdown output require '.' decimals
+# regardless of the machine the script runs from.
+export LC_ALL=C
+
+# Server-only llama.cpp benchmark runner.
+# Benchmarks whatever model is currently loaded on a remote llama-server
+# via POST /completion timings. Outputs markdown tables matching
+# BENCHMARKS.md format (H3 title, table columns, test order).
 
 # Configuration
-LLAMA_BIN="${LLAMA_BIN:-llama}"
+SERVER="${LLAMA_SERVER_URL:-http://192.168.88.33:8080}"
 RUNS="${RUNS:-1}"
-BATCH="${BATCH:-512}"
-THREADS="${THREADS:-$(nproc)}"
 PROGRESS="${PROGRESS:-1}"  # 1 = show progress, 0 = silent
 
-# Model path (folder or .gguf file) - set via -m/--model
-MODEL_PATH=""
-
-# Group definitions: name|section_header|start_idx|end_idx
-MODEL_GROUPS=(
-    "tiny|1B Models|0|3"
-    "small|2-3B Models|4|6"
-    "medium|4B Models|7|10"
-    "large|7-8B Models|11|13"
-    "offload|9B Models|14|18"
-)
-
-# NGL values to sweep for the offload group
-OFFLOAD_NGL_VALUES=(0 10 20 32 -1)
-
-# Model configurations: "hf_model_id|label|ngl|quant|params|size_gb"
-MODELS=(
-    # tiny - 1B models (indices 0-3)
-    "bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M|Llama 3.2 1B Instruct|-1|Q4_K_M|1B|0.8"
-    "fableforge-ai/FableForge-1.5B:Q4_K_M|FableForge 1.5B|-1|Q4_K_M|1.5B|0.9"
-    "unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M|Qwen3.5 0.8B|-1|Q4_K_M|0.8B|0.5"
-    "unsloth/gemma-3-1b-it-GGUF:Q4_K_M|Gemma 3 1B|-1|Q4_K_M|1B|0.7"
-
-    # small - 2-3B models (indices 4-6)
-    "google/gemma-2-2b-it-GGUF:Q4_K_M|Gemma 2 2B Instruct|-1|Q4_K_M|2B|1.6"
-    "Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M|Qwen2.5 3B Instruct|-1|Q4_K_M|3B|1.9"
-    "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M|Llama 3.2 3B Instruct|-1|Q4_K_M|3B|2.0"
-
-    # medium - 4B models (indices 7-10)
-    #"unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M|Phi-4-mini-instruct|-1|Q4_K_M|4B|2.5"
-    #"bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Q4_K_M|Qwen3 4B Instruct|-1|Q4_K_M|4B|2.6"
-    #"unsloth/Nemotron-3-Nano-4B-Instruct-GGUF:Q4_K_M|Nemotron 3 Nano 4B|-1|Q4_K_M|4B|2.5"
-    #"prism-ml/Bonsai-8B-gguf:Q1_0|Bonsai 8B|-1|Q1_0|8B|1.1"
-    "prism-ml/Bonsai-27B-gguf:Q1_0|Bonsai 27B|-1|Q1_0|27B|1.8"
-    "deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M|Ornith 1.0 9B|-1|Q4_K_M|9B|5.6"
-
-    # large - 7-8B models (indices 11-13)
-    "Qwen/Qwen2.5-7B-Instruct-GGUF:Q4_K_M|Qwen2.5 7B Instruct|-1|Q4_K_M|7B|4.4"
-    "MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M|Mistral 7B Instruct v0.3|-1|Q4_K_M|7B|4.4"
-
-    # offload - 9B models (indices 14-18)
-    "Qwen/Qwen3-8B-GGUF:Q4_K_M|Qwen3 8B|-1|Q4_K_M|8B|5.0"
-    "bartowski/gemma-2-9b-it-GGUF:Q4_K_M|Gemma 2 9B Instruct|-1|Q4_K_M|9B|5.8"
-    "unsloth/Qwen3.5-9B-GGUF:Q4_K_M|Qwen3.5 9B|-1|Q4_K_M|9B|5.6"
-    "tensorblock/glm-4-9b-hf-GGUF:Q4_K_M|GLM-4 9B|-1|Q4_K_M|9B|6.2"
-    "LiquidAI/LFM2.5-8B-A1B-GGUF:Q4_K_M|LFM2.5 8B A1B|-1|Q4_K_M|8.3B|5.3"
-)
+# Labels for the results header (resolved in main if empty)
+MODEL_LABEL=""
+GPU_LABEL="remote"
 
 # Benchmark test configurations matching BENCHMARKS.md exactly
 # Format: "test_name|pp|tg"
@@ -75,110 +35,131 @@ BENCHMARKS=(
 
 usage() {
     cat <<EOF
-Usage: $0 [options] [model_index|group_name...]
+Usage: $0 [options]
 
-Groups (defined in MODEL_GROUPS array):
-  tiny     1B models (indices 0-3)
-  small    2-3B models (indices 4-6)
-  medium   4B models (indices 7-10)
-  large    7-8B models (indices 11-13)
-  offload  9B models with NGL sweep: 0,10,20,32,-1 (indices 14-17)
+Benchmarks the model currently loaded on a remote llama-server.
+The server must already be running with the desired model, e.g.:
+
+  llama-server -m /path/to/model.gguf -c 8192 --port 8080
 
 Options:
-  -b, --bin BIN        llama binary (default: llama; command name or executable path)
+  -s, --server URL     llama-server base URL (default: \$LLAMA_SERVER_URL or http://192.168.88.33:8080)
+      --model-label L  Model label for the results header (default: basename of /props model_path)
+      --gpu-label L    GPU label for the results header (default: remote)
   -r, --runs N         Number of runs per benchmark (default: 1)
-  -t, --threads N      CPU threads (default: nproc)
-  -B, --batch N        Batch size (default: 512)
   -p, --progress 0|1   Show progress indicators (default: 1)
-  -m, --model PATH     Path to local model folder or .gguf file
-      --model-label L  Custom label for local model (default: folder/file name)
-      --model-ngl N    GPU layers to offload for local model (default: -1 = all)
-  -o, --output FILE    Save output to FILE and print to stdout; single named groups replace existing blocks in place
-  -l, --list           List available models
+      --test NAME      Run only the given test (repeatable, e.g. --test pp16+tg16).
+                       Useful for smoke tests; default is all 9 tests in BENCHMARKS.md order.
+  -o, --output FILE    Save output to FILE and print to stdout (appends)
   -h, --help           Show this help
 
-Models (configure in MODELS array):
+Examples:
+  $0 --server http://192.168.88.33:8080 -o BENCHMARKS.md
+  $0 --server http://192.168.88.33:8080 --gpu-label "Tesla P40" --model-label "Bonsai 8B"
+  $0 --test pp16+tg16 -o /tmp/smoke.md
 EOF
-    for i in "${!MODELS[@]}"; do
-        IFS='|' read -r _ label _ quant params _ <<< "${MODELS[i]}"
-        printf "  %d) %s [%s] (%s params)\n" "$i" "$label" "$quant" "$params"
-    done
-    echo
-    echo "Examples:"
-    echo "  $0 -m /path/to/model.gguf                    # Benchmark a single .gguf file"
-    echo "  $0 -m /path/to/model/folder --model-label MyModel  # Benchmark model folder with custom label"
-    echo "  $0 -m /path/to/model --model-ngl 32                  # Benchmark with 32 GPU layers offloaded"
-    echo "  $0 0 1 2                                        # Benchmark models 0, 1, 2 from MODELS array"
-    echo "  $0 -r 3 -t 8                                    # Run 3 times with 8 threads on all models"
     exit 0
 }
 
-list_models() {
-    for i in "${!MODELS[@]}"; do
-        IFS='|' read -r hf_id label ngl quant params size_gb <<< "${MODELS[i]}"
-        printf "%d) %s [%s] (%s GB, %s params) — HF: %s\n" "$i" "$label" "$quant" "$size_gb" "$params" "$hf_id"
-    done
-    exit 0
+# Base server URL without trailing slash
+server_url() {
+    echo "${SERVER%/}"
 }
 
-# Run a single benchmark test and return JSON output
-run_benchmark_json() {
-    local hf_model="$1"
-    local pp="$2"
-    local tg="$3"
-    local ngl="$4"
-    local run_num="$5"
+# host:port portion of the server URL, used in headers
+hostport() {
+    local s
+    s=$(server_url)
+    s=${s#http://}
+    s=${s#https://}
+    echo "$s"
+}
 
-    local cmd=("$LLAMA_BIN" bench -hf "$hf_model" -p "$pp" -n "$tg" -ngl "$ngl" -r 1 -b "$BATCH" -t "$THREADS" -o json --no-warmup)
-    [[ "$PROGRESS" -eq 1 ]] && cmd+=(--progress)
+api_get() {
+    curl -sS --fail --connect-timeout 10 --max-time 60 "$(server_url)$1"
+}
 
-    # Run and capture JSON output
-    local output
-    output=$("${cmd[@]}") || {
-        echo "ERROR: benchmark failed for $hf_model (pp=$pp, tg=$tg, run=$run_num)" >&2
-        return 1
+# Abort if the server is not reachable
+preflight() {
+    api_get "/health" >/dev/null || {
+        echo "ERROR: llama-server not reachable at $(server_url)/health" >&2
+        exit 1
     }
-
-    echo "$output"
 }
 
-# Parse JSON output from llama-bench and extract metrics
-# llama-bench -o json outputs an array of 2 objects:
-#   [0] = prompt processing: {avg_ns, avg_ts, n_prompt, n_gen, ...}
-#   [1] = text generation:   {avg_ns, avg_ts, n_prompt, n_gen, ...}
-parse_benchmark_json() {
+# Model path reported by the server (e.g. /models/Bonsai-8B-Q1_0.gguf)
+server_model_path() {
+    api_get "/props" | jq -r '.model_path // empty'
+}
+
+default_model_label() {
+    local path label
+    path=$(server_model_path || true)
+    label=$(basename "${path:-unknown}")
+    label=${label%.gguf}
+    [[ -z "$label" ]] && label="unknown"
+    echo "$label"
+}
+
+# POST /completion with an exact pp-token prompt and n_predict=tg.
+# The prompt is a token-id array so prompt length is exact regardless
+# of the model's tokenizer. ignore_eos forces full-length generation
+# even if the model would stop early on the synthetic prompt.
+# Raw control bytes occasionally emitted in generated content are
+# stripped so the response always parses as JSON.
+# Returns the sanitized JSON response.
+run_completion() {
+    local pp="$1"
+    local tg="$2"
+    local body
+    body=$(jq -n --argjson pp "$pp" --argjson tg "$tg" \
+        '{prompt: ([range($pp) | 1]), n_predict: $tg, temperature: 0, cache_prompt: false, stream: false, ignore_eos: true}')
+    curl -sS --fail --connect-timeout 10 --max-time 3600 \
+        -H 'Content-Type: application/json' \
+        -d "$body" "$(server_url)/completion" \
+        | tr -d '\000-\010\013\014\016-\037'
+}
+
+# Parse /completion response timings into:
+#   avg_time_seconds|total_tokens|pp_tps|tg_tps|ttft_seconds
+parse_timings() {
     local json_output="$1"
 
-    local pp_avg_ns pp_avg_ts pp_tokens tg_avg_ns tg_avg_ts tg_tokens
-    pp_avg_ns=$(echo "$json_output" | jq '.[0].avg_ns')
-    pp_avg_ts=$(echo "$json_output" | jq '.[0].avg_ts')
-    pp_tokens=$(echo "$json_output" | jq '.[0].n_prompt')
-    tg_avg_ns=$(echo "$json_output" | jq '.[1].avg_ns')
-    tg_avg_ts=$(echo "$json_output" | jq '.[1].avg_ts')
-    tg_tokens=$(echo "$json_output" | jq '.[1].n_gen')
+    local prompt_ms predicted_ms prompt_n predicted_n pp_tps tg_tps
+    prompt_ms=$(echo "$json_output" | jq -r '.timings.prompt_ms')
+    predicted_ms=$(echo "$json_output" | jq -r '.timings.predicted_ms')
+    prompt_n=$(echo "$json_output" | jq -r '.timings.prompt_n')
+    predicted_n=$(echo "$json_output" | jq -r '.timings.predicted_n')
+    pp_tps=$(echo "$json_output" | jq -r '.timings.prompt_per_second')
+    tg_tps=$(echo "$json_output" | jq -r '.timings.predicted_per_second')
 
-    # Convert avg_ns to seconds
-    local pp_time tg_time
-    pp_time=$(echo "scale=6; $pp_avg_ns / 1000000000" | bc -l)
-    tg_time=$(echo "scale=6; $tg_avg_ns / 1000000000" | bc -l)
+    # Validate we got real numbers
+    if [[ -z "$prompt_ms" || "$prompt_ms" == "null" || "$prompt_ms" == "0" ]]; then
+        return 1
+    fi
+    if [[ -z "$predicted_ms" || "$predicted_ms" == "null" ]]; then
+        return 1
+    fi
+    if [[ -z "$prompt_n" || "$prompt_n" == "null" || "$prompt_n" == "0" ]]; then
+        return 1
+    fi
+    if [[ -z "$predicted_n" || "$predicted_n" == "null" || "$predicted_n" == "0" ]]; then
+        return 1
+    fi
 
-    # Total time = pp_time + tg_time
-    local total_time
-    total_time=$(echo "scale=6; $pp_time + $tg_time" | bc -l)
+    local avg_time total_tokens ttft
+    avg_time=$(awk -v a="$prompt_ms" -v b="$predicted_ms" 'BEGIN { printf "%.6f", (a + b) / 1000 }')
+    total_tokens=$((prompt_n + predicted_n))
+    ttft=$(awk -v a="$prompt_ms" 'BEGIN { printf "%.6f", a / 1000 }')
 
-    # Total tokens processed
-    local total_tokens
-    total_tokens=$((pp_tokens + tg_tokens))
-
-    # TTFT ≈ prompt processing time (time to first generated token)
-    echo "${total_time}|${total_tokens}|${pp_avg_ts}|${tg_avg_ts}|${pp_time}"
+    echo "${avg_time}|${total_tokens}|${pp_tps}|${tg_tps}|${ttft}"
 }
 
 # Format time: seconds with 2 decimals, or ms if < 1s
 format_time() {
     local sec="$1"
-    if (( $(echo "$sec < 1" | bc -l) )); then
-        printf "%.2f ms" "$(echo "$sec * 1000" | bc -l)"
+    if [[ $(awk -v s="$sec" 'BEGIN { print (s < 1) }') -eq 1 ]]; then
+        printf "%.2f ms" "$(awk -v s="$sec" 'BEGIN { printf "%.6f", s * 1000 }')"
     else
         printf "%.2f s" "$sec"
     fi
@@ -188,33 +169,6 @@ format_time() {
 format_tps() {
     local tps="$1"
     printf "%.2f" "$tps"
-}
-
-# Describe the GPU(s) present, e.g. "Tesla P40" or "Tesla P40 x2". Used as a
-# history key: results are only replaced when group, day AND GPU all match.
-gpu_label() {
-    local -a names
-    local total name i same=1
-    mapfile -t names < <(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null)
-    total=${#names[@]}
-    [[ $total -eq 0 ]] && { echo "CPU"; return; }
-    name="${names[0]}"
-    for ((i = 1; i < total; i++)); do
-        [[ "${names[i]}" == "$name" ]] || same=0
-    done
-    if [[ $same -eq 0 ]]; then
-        local out=""
-        for n in "${names[@]}"; do
-            out+="${out:+ + }$n"
-        done
-        echo "$out"
-        return
-    fi
-    if [[ $total -eq 1 ]]; then
-        echo "$name"
-    else
-        echo "$name x$total"
-    fi
 }
 
 ensure_output_file_header() {
@@ -241,70 +195,13 @@ append_run_block_to_output() {
     cat "$content_file" >> "$output_file"
 }
 
-replace_group_block_in_output() {
-    local content_file="$1"
-    local output_file="$2"
-    local group_name="$3"
-    local day="$4"
-    local gpu="$5"
-    local temp_file
-    temp_file=$(mktemp)
-
-    awk -v group_name="$group_name" -v replacement_file="$content_file" -v day="$day" -v gpu="$gpu" '
-        function print_replacement(    line) {
-            while ((getline line < replacement_file) > 0) {
-                print line
-            }
-            close(replacement_file)
-        }
-
-        $0 ~ "^## " day " [0-9][0-9]:[0-9][0-9] - " group_name " \\(" && index($0, "(" gpu ")") {
-            print_replacement()
-            skipping = 1
-            replaced = 1
-            next
-        }
-
-        skipping {
-            if ($0 == "---") {
-                skipping = 0
-                print $0
-            }
-            next
-        }
-
-        { print }
-    ' "$output_file" > "$temp_file"
-
-    mv "$temp_file" "$output_file"
-}
-
 write_run_block() {
     local content_file="$1"
     local output_file="$2"
-    local replace_group="${3:-}"
 
     if [[ -n "$output_file" ]]; then
         ensure_output_file_header "$output_file"
-
-        if [[ -n "$replace_group" ]]; then
-            local today gpu
-            today=$(date '+%Y-%m-%d')
-            gpu=$(gpu_label)
-            if awk -v day="$today" -v g="$replace_group" -v l="$gpu" '
-                    $0 ~ "^## " day " [0-9][0-9]:[0-9][0-9] - " g " \\(" && index($0, "(" l ")") {
-                        found = 1
-                        exit
-                    }
-                    END { exit found ? 0 : 1 }
-                ' "$output_file"; then
-                replace_group_block_in_output "$content_file" "$output_file" "$replace_group" "$today" "$gpu"
-            else
-                append_run_block_to_output "$content_file" "$output_file"
-            fi
-        else
-            append_run_block_to_output "$content_file" "$output_file"
-        fi
+        append_run_block_to_output "$content_file" "$output_file"
     fi
 
     echo "---"
@@ -312,39 +209,28 @@ write_run_block() {
     cat "$content_file"
 }
 
-# Run benchmarks on a local model path (folder or .gguf file)
-run_local_model_benchmarks() {
-    local model_path="$1"
-    local label="$2"
-    local ngl="${3:--1}"
+# Run the selected benchmark tests against the server and print the table
+run_server_benchmarks() {
+    local label="$1"
+    local gpu="$2"
+    shift 2
+    local selected=("$@")
 
-    # Determine model label from path if not provided
-    if [[ -z "$label" ]]; then
-        label=$(basename "$model_path")
-        # Remove .gguf extension if present
-        label=${label%.gguf}
-    fi
-
-    local gpu_name
-    gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown GPU")
-    local vram
-    vram=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown VRAM")
-
-    echo "### $label - $gpu_name ($vram)"
+    echo "### $label - server - $gpu ($(hostport))"
     echo ""
     echo "| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |"
     echo "|------|-----|----------|------------------|--------|--------|------|"
 
-    local total_tests=${#BENCHMARKS[@]}
+    local total_tests=${#selected[@]}
     local test_num=0
 
-    for bench in "${BENCHMARKS[@]}"; do
+    for bench in "${selected[@]}"; do
         IFS='|' read -r test_name pp tg <<< "$bench"
         test_num=$((test_num + 1))
 
         # Progress indicator
         if [[ "$PROGRESS" -eq 1 ]]; then
-            echo "  [$test_num/$total_tests] Running $test_name (pp=$pp, tg=$tg) on $label..." >&2
+            echo "  [$test_num/$total_tests] Running $test_name (pp=$pp, tg=$tg) on $label @ $(hostport)..." >&2
         fi
 
         # Accumulate results across runs
@@ -356,21 +242,27 @@ run_local_model_benchmarks() {
                 echo "    Run $run/$RUNS..." >&2
             fi
 
-            local json_output
-            json_output=$(run_benchmark_json_local "$model_path" "$pp" "$tg" "$ngl" "$run") || continue
+            local response
+            if ! response=$(run_completion "$pp" "$tg"); then
+                echo "ERROR: benchmark failed for $test_name (pp=$pp, tg=$tg, run=$run)" >&2
+                continue
+            fi
 
             local parsed
-            parsed=$(parse_benchmark_json "$json_output") || continue
+            if ! parsed=$(parse_timings "$response"); then
+                echo "ERROR: invalid timings for $test_name (pp=$pp, tg=$tg, run=$run)" >&2
+                continue
+            fi
 
             IFS='|' read -r avg_time tokens_processed pp_tps tg_tps ttft <<< "$parsed"
 
             # Validate we got real numbers
             if [[ -n "$avg_time" && "$avg_time" != "0" && -n "$tokens_processed" && "$tokens_processed" != "0" ]]; then
-                sum_avg_time=$(echo "$sum_avg_time + $avg_time" | bc -l)
-                sum_tokens=$(echo "$sum_tokens + $tokens_processed" | bc -l)
-                sum_pp_tps=$(echo "$sum_pp_tps + $pp_tps" | bc -l)
-                sum_tg_tps=$(echo "$sum_tg_tps + $tg_tps" | bc -l)
-                sum_ttft=$(echo "$sum_ttft + $ttft" | bc -l)
+                sum_avg_time=$(awk -v a="$sum_avg_time" -v b="$avg_time" 'BEGIN { printf "%.6f", a + b }')
+                sum_tokens=$(awk -v a="$sum_tokens" -v b="$tokens_processed" 'BEGIN { printf "%.6f", a + b }')
+                sum_pp_tps=$(awk -v a="$sum_pp_tps" -v b="$pp_tps" 'BEGIN { printf "%.6f", a + b }')
+                sum_tg_tps=$(awk -v a="$sum_tg_tps" -v b="$tg_tps" 'BEGIN { printf "%.6f", a + b }')
+                sum_ttft=$(awk -v a="$sum_ttft" -v b="$ttft" 'BEGIN { printf "%.6f", a + b }')
                 valid_runs=$((valid_runs + 1))
             fi
         done
@@ -382,11 +274,11 @@ run_local_model_benchmarks() {
 
         # Calculate averages
         local avg_avg_time avg_tokens avg_pp_tps avg_tg_tps avg_ttft
-        avg_avg_time=$(echo "scale=2; $sum_avg_time / $valid_runs" | bc -l)
-        avg_tokens=$(printf "%.0f" "$(echo "$sum_tokens / $valid_runs" | bc -l)")
-        avg_pp_tps=$(echo "scale=2; $sum_pp_tps / $valid_runs" | bc -l)
-        avg_tg_tps=$(echo "scale=2; $sum_tg_tps / $valid_runs" | bc -l)
-        avg_ttft=$(echo "scale=2; $sum_ttft / $valid_runs" | bc -l)
+        avg_avg_time=$(awk -v s="$sum_avg_time" -v n="$valid_runs" 'BEGIN { printf "%.2f", s / n }')
+        avg_tokens=$(awk -v s="$sum_tokens" -v n="$valid_runs" 'BEGIN { printf "%.0f", s / n }')
+        avg_pp_tps=$(awk -v s="$sum_pp_tps" -v n="$valid_runs" 'BEGIN { printf "%.2f", s / n }')
+        avg_tg_tps=$(awk -v s="$sum_tg_tps" -v n="$valid_runs" 'BEGIN { printf "%.2f", s / n }')
+        avg_ttft=$(awk -v s="$sum_ttft" -v n="$valid_runs" 'BEGIN { printf "%.2f", s / n }')
 
         # Tokens processed: show as "actual / expected" (expected = pp + tg)
         local expected_tokens=$((pp + tg))
@@ -408,315 +300,96 @@ run_local_model_benchmarks() {
     done
 
     echo ""
-}
-
-# Run a single benchmark test on local model and return JSON output
-run_benchmark_json_local() {
-    local model_path="$1"
-    local pp="$2"
-    local tg="$3"
-    local ngl="$4"
-    local run_num="$5"
-
-    local cmd=("$LLAMA_BIN" bench -m "$model_path" -p "$pp" -n "$tg" -ngl "$ngl" -r 1 -b "$BATCH" -t "$THREADS" -o json --no-warmup)
-    [[ "$PROGRESS" -eq 1 ]] && cmd+=(--progress)
-
-    # Run and capture JSON output (keep stderr separate to avoid progress pollution)
-    local output
-    output=$("${cmd[@]}") || {
-        echo "ERROR: benchmark failed for $model_path (pp=$pp, tg=$tg, run=$run_num)" >&2
-        return 1
-    }
-
-    echo "$output"
-}
-
-run_model_benchmarks() {
-    local model_idx="$1"
-    local ngl_override="${2:-}"  # optional NGL override for header
-    local model_config="${MODELS[model_idx]}"
-
-    IFS='|' read -r hf_id label ngl quant params size_gb <<< "$model_config"
-
-    # Use override NGL for the actual run if provided
-    local actual_ngl="$ngl"
-    [[ -n "$ngl_override" ]] && actual_ngl="$ngl_override"
-
-    local gpu_name
-    gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown GPU")
-    local vram
-    vram=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown VRAM")
-
-    if [[ -n "$ngl_override" ]]; then
-        echo "### $label - $quant - $gpu_name ($vram) - NGL=$ngl_override"
-    else
-        echo "### $label - $quant - $gpu_name ($vram)"
-    fi
-    echo ""
-    echo "| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |"
-    echo "|------|-----|----------|------------------|--------|--------|------|"
-
-    local total_tests=${#BENCHMARKS[@]}
-    local test_num=0
-
-    for bench in "${BENCHMARKS[@]}"; do
-        IFS='|' read -r test_name pp tg <<< "$bench"
-        test_num=$((test_num + 1))
-
-        # Progress indicator
-        if [[ "$PROGRESS" -eq 1 ]]; then
-            echo "  [$test_num/$total_tests] Running $test_name (pp=$pp, tg=$tg) on $label..." >&2
-        fi
-
-        # Accumulate results across runs
-        local sum_avg_time=0 sum_tokens=0 sum_pp_tps=0 sum_tg_tps=0 sum_ttft=0
-        local valid_runs=0
-
-        for run in $(seq 1 "$RUNS"); do
-            if [[ "$PROGRESS" -eq 1 && "$RUNS" -gt 1 ]]; then
-                echo "    Run $run/$RUNS..." >&2
-            fi
-
-            local json_output
-            json_output=$(run_benchmark_json "$hf_id" "$pp" "$tg" "$actual_ngl" "$run") || continue
-
-            local parsed
-            parsed=$(parse_benchmark_json "$json_output") || continue
-
-            IFS='|' read -r avg_time tokens_processed pp_tps tg_tps ttft <<< "$parsed"
-
-            # Validate we got real numbers
-            if [[ -n "$avg_time" && "$avg_time" != "0" && -n "$tokens_processed" && "$tokens_processed" != "0" ]]; then
-                sum_avg_time=$(echo "$sum_avg_time + $avg_time" | bc -l)
-                sum_tokens=$(echo "$sum_tokens + $tokens_processed" | bc -l)
-                sum_pp_tps=$(echo "$sum_pp_tps + $pp_tps" | bc -l)
-                sum_tg_tps=$(echo "$sum_tg_tps + $tg_tps" | bc -l)
-                sum_ttft=$(echo "$sum_ttft + $ttft" | bc -l)
-                valid_runs=$((valid_runs + 1))
-            fi
-        done
-
-        if [[ $valid_runs -eq 0 ]]; then
-            printf "| %s | %d/%d | — | — | — | — | — |\n" "$test_name" "$RUNS" "$RUNS"
-            continue
-        fi
-
-        # Calculate averages
-        local avg_avg_time avg_tokens avg_pp_tps avg_tg_tps avg_ttft
-        avg_avg_time=$(echo "scale=2; $sum_avg_time / $valid_runs" | bc -l)
-        avg_tokens=$(printf "%.0f" "$(echo "$sum_tokens / $valid_runs" | bc -l)")
-        avg_pp_tps=$(echo "scale=2; $sum_pp_tps / $valid_runs" | bc -l)
-        avg_tg_tps=$(echo "scale=2; $sum_tg_tps / $valid_runs" | bc -l)
-        avg_ttft=$(echo "scale=2; $sum_ttft / $valid_runs" | bc -l)
-
-        # Tokens processed: show as "actual / expected" (expected = pp + tg)
-        local expected_tokens=$((pp + tg))
-        local tokens_display="${avg_tokens} / ${expected_tokens}"
-
-        # Format output matching BENCHMARKS.md exactly
-        local formatted_time formatted_ttft
-        formatted_time=$(format_time "$avg_avg_time")
-        formatted_ttft=$(format_time "$avg_ttft")
-
-        printf "| %s | %d/%d | %s | %s | %s | %s | %s |\n" \
-            "$test_name" \
-            "$valid_runs" "$RUNS" \
-            "$formatted_time" \
-            "$tokens_display" \
-            "$(format_tps "$avg_pp_tps")" \
-            "$(format_tps "$avg_tg_tps")" \
-            "$formatted_ttft"
-    done
-
-    echo ""
-}
-
-# Global task list: each entry is "model_idx|section_header|ngl_override"
-TASKS=()
-
-# Resolve arguments into TASKS array.
-# Groups expand to their model indices; offload adds NGL sweep entries.
-resolve_tasks() {
-    local args=("$@")
-    TASKS=()
-
-    for arg in "${args[@]}"; do
-        local resolved=0
-        for group in "${MODEL_GROUPS[@]}"; do
-            IFS='|' read -r gname section start end <<< "$group"
-            if [[ "$arg" == "$gname" ]]; then
-                for ((i=start; i<=end; i++)); do
-                    if [[ "$gname" == "offload" ]]; then
-                        for ngl in "${OFFLOAD_NGL_VALUES[@]}"; do
-                            TASKS+=("$i|$section|$ngl")
-                        done
-                    else
-                        TASKS+=("$i|$section|")
-                    fi
-                done
-                resolved=1
-                break
-            fi
-        done
-        if [[ "$resolved" -eq 0 ]]; then
-            if [[ "$arg" =~ ^[0-9]+$ ]] && [[ "$arg" -ge 0 ]] && [[ "$arg" -lt "${#MODELS[@]}" ]]; then
-                local section=""
-                for group in "${MODEL_GROUPS[@]}"; do
-                    IFS='|' read -r gname gsection gstart gend <<< "$group"
-                    if [[ "$arg" -ge "$gstart" && "$arg" -le "$gend" ]]; then
-                        section="$gsection"
-                        break
-                    fi
-                done
-                TASKS+=("$arg|$section|")
-            else
-                echo "ERROR: Unknown model index or group: $arg" >&2
-                exit 1
-            fi
-        fi
-    done
-}
-
-resolve_llama_bin() {
-    if [[ "$LLAMA_BIN" == */* ]]; then
-        if [[ ! -e "$LLAMA_BIN" ]]; then
-            echo "ERROR: llama binary path does not exist: $LLAMA_BIN" >&2
-            exit 1
-        fi
-        if [[ ! -f "$LLAMA_BIN" ]]; then
-            echo "ERROR: llama binary path is not a file: $LLAMA_BIN" >&2
-            exit 1
-        fi
-        if [[ ! -x "$LLAMA_BIN" ]]; then
-            echo "ERROR: llama binary is not executable: $LLAMA_BIN" >&2
-            exit 1
-        fi
-        return
-    fi
-
-    local resolved_bin
-    resolved_bin=$(command -v "$LLAMA_BIN" 2>/dev/null) || {
-        echo "ERROR: $LLAMA_BIN not found in PATH" >&2
-        exit 1
-    }
-    LLAMA_BIN="$resolved_bin"
 }
 
 main() {
-    local model_indices=()
-    local model_label=""
-    local model_ngl="-1"
     local output_file=""
+    local -a test_filter=()
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -b|--bin) LLAMA_BIN="$2"; shift 2 ;;
+            -s|--server) SERVER="$2"; shift 2 ;;
+            --model-label) MODEL_LABEL="$2"; shift 2 ;;
+            --gpu-label) GPU_LABEL="$2"; shift 2 ;;
             -r|--runs) RUNS="$2"; shift 2 ;;
-            -t|--threads) THREADS="$2"; shift 2 ;;
-            -B|--batch) BATCH="$2"; shift 2 ;;
             -p|--progress) PROGRESS="$2"; shift 2 ;;
-            -m|--model) MODEL_PATH="$2"; shift 2 ;;
-            --model-label) model_label="$2"; shift 2 ;;
-            --model-ngl) model_ngl="$2"; shift 2 ;;
+            --test)
+                if [[ $# -ge 2 && -n "$2" && "${2#-}" = "$2" ]]; then
+                    test_filter+=("$2"); shift 2
+                else
+                    echo "ERROR: --test requires a test name argument" >&2; exit 1
+                fi ;;
             -o|--output)
                 if [[ $# -ge 2 && -n "$2" && "${2#-}" = "$2" ]]; then
                     output_file="$2"; shift 2
                 else
                     echo "ERROR: --output requires a filename argument" >&2; exit 1
                 fi ;;
-            -l|--list) list_models ;;
             -h|--help) usage ;;
-            *) model_indices+=("$1"); shift ;;
+            *)
+                echo "ERROR: Unknown argument: $1" >&2
+                echo "Run '$0 --help' for usage." >&2
+                exit 1
+                ;;
         esac
     done
 
-    # Check llama binary exists
-    resolve_llama_bin
-
     # Check for required dependencies
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "ERROR: curl not found" >&2
+        exit 1
+    fi
     if ! command -v jq >/dev/null 2>&1; then
         echo "ERROR: jq not found" >&2
         exit 1
     fi
-    if ! command -v bc >/dev/null 2>&1; then
-        echo "ERROR: bc not found" >&2
+    if ! command -v awk >/dev/null 2>&1; then
+        echo "ERROR: awk not found" >&2
         exit 1
     fi
 
-    # If model path provided via -m/--model, run benchmarks on that model only
-    if [[ -n "$MODEL_PATH" ]]; then
-        if [[ ! -e "$MODEL_PATH" ]]; then
-            echo "ERROR: Model path does not exist: $MODEL_PATH" >&2
-            exit 1
-        fi
-
-        local content_file
-        content_file=$(mktemp)
-
-        {
-            echo "## $(date '+%Y-%m-%d %H:%M') - local model ($(gpu_label))"
-            echo ""
-
-            run_local_model_benchmarks "$MODEL_PATH" "$model_label" "$model_ngl"
-        } > "$content_file"
-
-        write_run_block "$content_file" "$output_file"
-        rm -f "$content_file"
-        exit 0
-    fi
-
-    # Default: run all groups if no args specified
-    if [[ ${#model_indices[@]} -eq 0 ]]; then
-        model_indices=(tiny small medium large offload)
-    fi
-
-    # Resolve args to task list
-    resolve_tasks "${model_indices[@]}"
-
-    # Build a group label from the args for the timestamp header
-    local run_label=""
-    for arg in "${model_indices[@]}"; do
-        [[ -n "$run_label" ]] && run_label+=", "
-        run_label+="$arg"
-    done
-
-    local replace_group=""
-    if [[ ${#model_indices[@]} -eq 1 ]]; then
-        for group in "${MODEL_GROUPS[@]}"; do
-            IFS='|' read -r gname _ _ _ <<< "$group"
-            if [[ "${model_indices[0]}" == "$gname" ]]; then
-                replace_group="$gname"
-                break
+    # Resolve selected tests (default: all 9 in BENCHMARKS.md order)
+    local -a selected=()
+    if [[ ${#test_filter[@]} -eq 0 ]]; then
+        selected=("${BENCHMARKS[@]}")
+    else
+        for wanted in "${test_filter[@]}"; do
+            local found=0
+            for bench in "${BENCHMARKS[@]}"; do
+                IFS='|' read -r test_name _ _ <<< "$bench"
+                if [[ "$test_name" == "$wanted" ]]; then
+                    selected+=("$bench")
+                    found=1
+                    break
+                fi
+            done
+            if [[ "$found" -eq 0 ]]; then
+                echo "ERROR: Unknown test: $wanted" >&2
+                exit 1
             fi
         done
     fi
+
+    # Server must be up before doing anything else
+    preflight
+
+    # Resolve labels
+    local label="$MODEL_LABEL"
+    if [[ -z "$label" ]]; then
+        label=$(default_model_label)
+    fi
+    local gpu="$GPU_LABEL"
 
     local content_file
     content_file=$(mktemp)
 
     {
-        echo "## $(date '+%Y-%m-%d %H:%M') - $run_label ($(gpu_label))"
+        echo "## $(date '+%Y-%m-%d %H:%M') - server ($(hostport))"
         echo ""
-
-        local current_section=""
-        for task in "${TASKS[@]}"; do
-            IFS='|' read -r idx section ngl_override <<< "$task"
-
-            if [[ -n "$section" && "$section" != "$current_section" ]]; then
-                echo "## $section"
-                echo ""
-                current_section="$section"
-            fi
-
-            if [[ -n "$ngl_override" ]]; then
-                run_model_benchmarks "$idx" "$ngl_override"
-            else
-                run_model_benchmarks "$idx"
-            fi
-        done
+        run_server_benchmarks "$label" "$gpu" "${selected[@]}"
     } > "$content_file"
 
-    write_run_block "$content_file" "$output_file" "$replace_group"
+    write_run_block "$content_file" "$output_file"
     rm -f "$content_file"
 }
 
