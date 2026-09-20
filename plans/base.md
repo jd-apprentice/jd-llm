@@ -1,5 +1,13 @@
 # Benchmark Plan - Models 1B to 9B
 
+> **Superseded (2026-09)**: `bench.sh` is now server-only — it benchmarks
+> whatever model is loaded on a remote `llama-server` via `POST /completion`
+> timings. Group names (`tiny`/`small`/`medium`/`large`/`offload`), the
+> `MODELS` array and the NGL sweep no longer exist in the script. The model
+> list below remains as a catalog of candidates; each is benchmarked by
+> loading it on the server and running
+> `./scripts/bench.sh --server <URL> --gpu-label <GPU> -o BENCHMARKS.md`.
+
 ## Goal
 Exhaustive benchmark of instruct/chat LLM models across different sizes (1B-9B)
 for GTX 1660 SUPER 6GB with llama.cpp CUDA.

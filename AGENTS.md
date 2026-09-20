@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) runs `llama bench` against models and outputs markdown results into `BENCHMARKS.md`. No compiled app, no package manager.
+Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) benchmarks the model loaded on a remote `llama-server` via `POST /completion` timings and outputs markdown results into `BENCHMARKS.md`. Server-only client: no local inference, no compiled app, no package manager.
 
 ## Hardware (benchmark context)
 
@@ -11,20 +11,21 @@ Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) runs `ll
 - CPU: AMD Ryzen 5 3400g
 - RAM: 8 GB DDR4 2400 MHz × 2 (dual-channel)
 
-## Prerequisites
+## Prerequisites (client)
 
 - Git
-- llama.cpp (built from source — see build instructions below)
-- CUDA 12.x toolkit
+- curl
 - jq
-- bc
+- awk
 
 ```bash
 git clone https://github.com/jd-apprentice/llm-setup.git
 cd llm-setup
 chmod +x scripts/bench.sh
-./scripts/bench.sh tiny --output BENCHMARKS.md
+./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40" --output BENCHMARKS.md
 ```
+
+The server must already be running with the desired model (`llama-server -m /path/to/model.gguf -c 8192 --port 8080`). Override the default server with `-s/--server URL` or `LLAMA_SERVER_URL`.
 
 ## Lint & verify
 
@@ -46,9 +47,8 @@ git config core.hooksPath .githooks
 
 H3 title pattern:
 ```
-### <MODEL> - <QUANTIZATION> - <GPU_NAME> (<VRAM>) - <URL>
+### <MODEL> - server - <GPU_LABEL> (<HOST:PORT>)
 ```
-Offload runs append `- NGL=<value>` (e.g. `NGL=10`).
 
 Table columns: `Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT`
 
@@ -60,14 +60,13 @@ Table columns: `Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTF
 
 ## `scripts/bench.sh` details
 
-- **Dependencies**: `llama` in PATH, `jq`, `bc`, `nvidia-smi`
-- **Env overrides**: `LLAMA_BIN`, `RUNS`, `BATCH`, `THREADS`, `PROGRESS`
-- **Two modes**: HF model by group name or index (`./bench.sh tiny` / `./bench.sh 0 1`), or local model (`./bench.sh -m /path/to/model.gguf`)
-- **Local model extras**: `--model-label LABEL`, `--model-ngl N` (default: -1 = all GPU layers)
-- **Model groups**: tiny(0-3), small(4-6), medium(7-10), large(11-13), offload(14-18); see `MODELS` array (lines 30-59)
-- **Offload NGL sweep**: `0,10,20,32,-1` (5 runs per model)
-- **`-o/--output FILE`**: single named groups replace their existing block in-place; all other invocations append. Does NOT overwrite the whole file.
-- **`llama` binary** must be compiled from source with CUDA 12.x toolkit (12.8) targeting Pascal architecture (`sm_61`). CUDA Toolkit 13.x dropped support for architectures older than sm_70. The NVIDIA `580` driver branch is the last one supporting Pascal and tops out at CUDA 13.0.
+- **Dependencies**: `curl`, `jq`, `awk` (`LC_ALL=C` forced in-script for `.` decimals)
+- **Env overrides**: `LLAMA_SERVER_URL` (default `http://192.168.88.33:8080`), `RUNS`, `PROGRESS`
+- **Flags**: `-s/--server URL`, `--model-label L` (default: `/props` model_path basename), `--gpu-label L` (default: `remote`; the API doesn't expose GPU info), `-r/--runs`, `-p/--progress`, `--test NAME` (repeatable, smoke test), `-o/--output FILE`
+- **Method**: token-id array prompt of exactly `pp` tokens, `n_predict=tg`, `temperature: 0`, `cache_prompt: false`, `ignore_eos: true` (forces full-length generation); parses `.timings` (`prompt_ms`/`predicted_ms` → Avg Time/TTFT, `prompt_per_second`/`predicted_per_second` → PP/TG T/s). Raw control bytes in generated content are stripped before `jq`.
+- **`-o/--output FILE`**: always appends a timestamped block. Does NOT overwrite the whole file.
+- Server must be started with enough context (`-c`) for the largest test (`pp4096+tg3072`) and the desired model. Multi-model and NGL sweeps are manual (restart server per config).
+- **`llama-server` binary** on the benchmark host must be compiled from source with CUDA 12.x toolkit (12.8) targeting Pascal architecture (`sm_61`). CUDA Toolkit 13.x dropped support for architectures older than sm_70. The NVIDIA `580` driver branch is the last one supporting Pascal and tops out at CUDA 13.0.
 
 Build flags:
 ```bash
@@ -78,14 +77,14 @@ cmake -B build \
 cmake --build build --target llama-app -j 2
 ```
 
-- Install: `cp build/bin/llama ~/.local/bin/llama`, then copy `build/bin/*.so*` to a library path (e.g. `/usr/local/lib`) and run `ldconfig`.
+- Install: `cp build/bin/llama-server ~/.local/bin/llama-server`, then copy `build/bin/*.so*` to a library path (e.g. `/usr/local/lib`) and run `ldconfig`.
 - Build against `ggml-org/llama.cpp` branch `b10826`: `git clone --depth 1 --branch b10826 https://github.com/ggml-org/llama.cpp`
 - Do **not** run `llama update` — it replaces the CUDA build with a CPU-only binary.
-- Sanity check: `llama bench --list-devices` should report `CUDA0: Tesla P40`.
+- Sanity check: start the server and confirm the log reports `CUDA0: Tesla P40`, then `curl http://<host>:8080/health` responds once the model is loaded.
 
 ## `models/` directory
 
-Gitignored (`.gitignore`). Contains one pre-downloaded model: `Bonsai-8B-Q1_0.gguf` (index 10 in `medium` group). For HF-hosted models, `bench.sh` downloads via `llama bench -hf` automatically at runtime.
+Gitignored (`.gitignore`). `bench.sh` no longer downloads models — it benches whatever the server has loaded. The directory remains for manually staged `.gguf` files served by `llama-server -m`.
 
 ## Commit style
 

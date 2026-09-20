@@ -16,21 +16,26 @@ Memory: 8GB DDR4 2400 MHz x2
 
 ## Custom Setup
 
-These includes the prerequisites and build instructions for running the benchmarks with `bench.sh`.
+`bench.sh` is a server-only client: it benchmarks whatever model is loaded on a remote `llama-server` via `POST /completion` timings. No local inference needed.
 
-### Prerequisites
+### Prerequisites (client)
 
 - Git
-- llama.cpp
-- CUDA / ROCm
+- curl
 - jq
-- bc
+- awk
 
 ```bash
 git clone https://github.com/jd-apprentice/llm-setup.git
 cd llm-setup
 chmod +x scripts/bench.sh
-./scripts/bench.sh tiny --output BENCHMARKS.md
+./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40" --output BENCHMARKS.md
+```
+
+The server must already be running with the desired model:
+
+```bash
+llama-server -m /path/to/model.gguf -c 8192 --port 8080
 ```
 
 ### Local Development
@@ -44,15 +49,15 @@ Make sure to setup hooks with
 git config --local core.hooksPath .githooks/
 ```
 
-### Pascal Setup
+### Server setup (Pascal)
 
-The Tesla P40 is a Pascal GPU (compute capability 6.1), so llama.cpp must be compiled from source with CUDA support for that architecture.
+The benchmark host serves models with `llama-server`, and its Tesla P40 is a Pascal GPU (compute capability 6.1), so llama.cpp must be compiled from source with CUDA support for that architecture.
 
 Relevant constraints:
 
 - The NVIDIA `580` driver branch is the **last** one supporting Pascal and tops out at CUDA 13.0.
 - CUDA Toolkit **13.x dropped support for architectures older than sm_70**, so the build must use a CUDA 12.x toolkit (12.8 in this setup). The 580 driver runs CUDA 12.x applications without issues.
-- The `llama.app` Linux installer only provides CUDA builds compiled against the newest CUDA release, whose minimum driver the `580` branch cannot satisfy. Its probe silently falls back to a CPU-only binary (`llama bench --list-devices` shows no devices) — another reason to build from source.
+- The `llama.app` Linux installer only provides CUDA builds compiled against the newest CUDA release, whose minimum driver the `580` branch cannot satisfy. Its probe silently falls back to a CPU-only binary (no CUDA devices visible) — another reason to build from source.
 
 ```bash
 git clone --depth 1 --branch b10826 https://github.com/ggml-org/llama.cpp
@@ -66,15 +71,15 @@ cmake --build build --target llama-app -j 2
 
 Notes:
 
-- The build produces the unified `llama` binary (`build/bin/llama`) that `bench.sh` relies on (`llama bench ...`). Install it into your PATH with `cp build/bin/llama ~/.local/bin/llama`, and copy the shared libraries (`build/bin/*.so*`) into a library path such as `/usr/local/lib` followed by `ldconfig`.
+- The build produces `llama-server` (`build/bin/llama-server`). Install it into your PATH with `cp build/bin/llama-server ~/.local/bin/llama-server`, and copy the shared libraries (`build/bin/*.so*`) into a library path such as `/usr/local/lib` followed by `ldconfig`.
 - Do **not** run `llama update`: `llama.app` would replace the CUDA build with its CPU-only binary again.
-- Sanity check that the GPU is visible: `llama bench --list-devices` should report `CUDA0: Tesla P40`.
+- Sanity check that the GPU is visible: start the server and confirm the log reports `CUDA0: Tesla P40`, then `curl http://<host>:8080/health` responds once the model is loaded.
 - Keep `CMAKE_CUDA_ARCHITECTURES="61"` and a CUDA 12.x toolkit when rebuilding with newer llama.cpp releases.
 - `-j 2` avoids OOM during the CUDA compilation on hosts with 4 GB of RAM.
 
 ## Benchmarks
 
-See [BENCHMARKS.md](BENCHMARKS.md) for native results.
+See [BENCHMARKS.md](BENCHMARKS.md) for results.
 
 ## Examples
 
