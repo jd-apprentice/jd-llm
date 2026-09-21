@@ -88,6 +88,10 @@ See [examples/](examples/) for projects generated with the local models:
 - [veterinary-web](examples/veterinary-web/) — live at [local-llm-example-1.jonathan.com.ar](https://local-llm-example-1.jonathan.com.ar)
 - [retro-games](examples/retro-games/) — live at [local-llm-example-2.jonathan.com.ar](https://local-llm-example-2.jonathan.com.ar)
 
+## Blog
+
+- [Correr LLMs en tu casa con una Tesla P40: crónica de un quilombo hermoso](blog/corriendo-llms-tesla-p40.md)
+
 ## References
 
 - [llama.cpp CUDA build guide](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#cuda)
