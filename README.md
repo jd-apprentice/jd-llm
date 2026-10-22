@@ -79,7 +79,11 @@ Notes:
 
 ## Benchmarks
 
-See [BENCHMARKS.md](BENCHMARKS.md) for results.
+See [BENCHMARKS.md](BENCHMARKS.md) for `bench.sh` results.
+
+Long-context setup reports live in [docs/](docs/):
+
+- [Qwen3.8-27B at 128k on Tesla P40 (MTP + passthrough)](docs/tesla-p40-qwen3.8-27b-128k-mtp.md)
 
 ## Examples
 
