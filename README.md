@@ -35,7 +35,18 @@ chmod +x scripts/bench.sh
 The server must already be running with the desired model:
 
 ```bash
-llama-server -m /path/to/model.gguf -c 8192 --port 8080
+## Example
+./build/bin/llama-server \
+  -m /models/qwen3.6-35b-a3b/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf \
+  --mmproj /models/qwen3.6-35b-a3b/mmproj-F16.gguf \
+  --spec-type draft-mtp \
+  -ngl 99 \
+  -c 131072 \
+  -fa on \
+  -ctk q8_0 -ctv q8_0 \
+  --host 0.0.0.0 \
+  --port 8080 \
+  --jinja
 ```
 
 ### Local Development

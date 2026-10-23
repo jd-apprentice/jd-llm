@@ -22,7 +22,7 @@ Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) benchmar
 git clone https://github.com/jd-apprentice/llm-setup.git
 cd llm-setup
 chmod +x scripts/bench.sh
-./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40" --output BENCHMARKS.md
+./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40 (23040 MiB)" --output BENCHMARKS.md
 ```
 
 The server must already be running with the desired model (`llama-server -m /path/to/model.gguf -c 8192 --port 8080`). Override the default server with `-s/--server URL` or `LLAMA_SERVER_URL`.
@@ -47,8 +47,9 @@ git config core.hooksPath .githooks
 
 H3 title pattern:
 ```
-### <MODEL> - server - <GPU_LABEL> (<HOST:PORT>)
+### <MODEL> - <QUANT> - <GPU> (<VRAM>)
 ```
+(Quant auto-detected from the server model filename unless `--quant-label` is passed; `--gpu-label` must include VRAM, e.g. `"Tesla P40 (23040 MiB)"`.)
 
 Table columns: `Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT`
 
@@ -62,7 +63,7 @@ Table columns: `Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTF
 
 - **Dependencies**: `curl`, `jq`, `awk` (`LC_ALL=C` forced in-script for `.` decimals)
 - **Env overrides**: `LLAMA_SERVER_URL` (default `http://192.168.88.33:8080`), `RUNS`, `PROGRESS`
-- **Flags**: `-s/--server URL`, `--model-label L` (default: `/props` model_path basename), `--gpu-label L` (default: `remote`; the API doesn't expose GPU info), `-r/--runs`, `-p/--progress`, `--test NAME` (repeatable, smoke test), `-o/--output FILE`
+- **Flags**: `-s/--server URL`, `--model-label L` (default: `/props` model_path basename), `--quant-label L` (default: auto-detected from filename, e.g. `Q4_K_M`), `--gpu-label L` (default: `remote`; pass full string like `"Tesla P40 (23040 MiB)"` — the API doesn't expose GPU info), `-r/--runs`, `-p/--progress`, `--test NAME` (repeatable, smoke test), `-o/--output FILE`
 - **Method**: token-id array prompt of exactly `pp` tokens, `n_predict=tg`, `temperature: 0`, `cache_prompt: false`, `ignore_eos: true` (forces full-length generation); parses `.timings` (`prompt_ms`/`predicted_ms` → Avg Time/TTFT, `prompt_per_second`/`predicted_per_second` → PP/TG T/s). Raw control bytes in generated content are stripped before `jq`.
 - **`-o/--output FILE`**: always appends a timestamped block. Does NOT overwrite the whole file.
 - Server must be started with enough context (`-c`) for the largest test (`pp4096+tg3072`) and the desired model. Multi-model and NGL sweeps are manual (restart server per config).

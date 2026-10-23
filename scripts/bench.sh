@@ -17,6 +17,7 @@ PROGRESS="${PROGRESS:-1}"  # 1 = show progress, 0 = silent
 
 # Labels for the results header (resolved in main if empty)
 MODEL_LABEL=""
+QUANT_LABEL=""
 GPU_LABEL="remote"
 
 # Benchmark test configurations matching BENCHMARKS.md exactly
@@ -45,7 +46,10 @@ The server must already be running with the desired model, e.g.:
 Options:
   -s, --server URL     llama-server base URL (default: \$LLAMA_SERVER_URL or http://192.168.88.33:8080)
       --model-label L  Model label for the results header (default: basename of /props model_path)
-      --gpu-label L    GPU label for the results header (default: remote)
+      --quant-label L  Quant label (default: auto-detected from the model filename, e.g. Q4_K_M, IQ2_S)
+      --gpu-label L    Full GPU label including VRAM, e.g. "Tesla P40 (23040 MiB)"
+                       (default: remote; the API doesn't expose GPU info, so pass the
+                       whole string. A missing "(...)" part becomes "(unknown)".)
   -r, --runs N         Number of runs per benchmark (default: 1)
   -p, --progress 0|1   Show progress indicators (default: 1)
       --test NAME      Run only the given test (repeatable, e.g. --test pp16+tg16).
@@ -55,7 +59,7 @@ Options:
 
 Examples:
   $0 --server http://192.168.88.33:8080 -o BENCHMARKS.md
-  $0 --server http://192.168.88.33:8080 --gpu-label "Tesla P40" --model-label "Bonsai 8B"
+  $0 --server http://192.168.88.33:8080 --gpu-label "Tesla P40 (23040 MiB)" --model-label "Bonsai 8B"
   $0 --test pp16+tg16 -o /tmp/smoke.md
 EOF
     exit 0
@@ -99,6 +103,42 @@ default_model_label() {
     label=${label%.gguf}
     [[ -z "$label" ]] && label="unknown"
     echo "$label"
+}
+
+# Split a raw model label/filename into pretty model name + quant.
+# Prints: model_pretty|quant
+# Quant is auto-detected (Q4_K_M, IQ2_S, ...) unless $2 overrides it.
+split_model_quant() {
+    local raw="$1"
+    local override="${2:-}"
+    local quant=""
+
+    raw=${raw%.gguf}
+    raw=${raw%.GGUF}
+
+    if [[ -n "$override" ]]; then
+        quant=$(echo "$override" | tr '[:lower:]' '[:upper:]')
+    else
+        local upper
+        upper=$(echo "$raw" | tr '[:lower:]' '[:upper:]')
+        if [[ "$upper" =~ (I?Q[0-9]_[A-Z0-9]+(_[A-Z0-9]+)?|BF16|F16|F32) ]]; then
+            quant="${BASH_REMATCH[1]}"
+        fi
+    fi
+
+    local model="$raw"
+    if [[ -n "$quant" ]]; then
+        # Drop the quant token (keep one adjacent separator so neighbours don't merge)
+        model=$(echo "$model" | sed -E "s/[-_ ]*${quant}([-_ ]|\$)/\1/I")
+    else
+        quant="unknown"
+    fi
+
+    # Prettify: separators to spaces, squeeze, trim
+    model=$(echo "$model" | tr -- '-_' '  ' | tr -s ' ' | sed -E 's/^ +//; s/ +$//')
+    [[ -z "$model" ]] && model="$raw"
+
+    echo "${model}|${quant}"
 }
 
 # POST /completion with an exact pp-token prompt and n_predict=tg.
@@ -211,12 +251,13 @@ write_run_block() {
 
 # Run the selected benchmark tests against the server and print the table
 run_server_benchmarks() {
-    local label="$1"
-    local gpu="$2"
-    shift 2
+    local model="$1"
+    local quant="$2"
+    local gpu="$3"
+    shift 3
     local selected=("$@")
 
-    echo "### $label - server - $gpu ($(hostport))"
+    echo "### $model - $quant - $gpu"
     echo ""
     echo "| Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTFT |"
     echo "|------|-----|----------|------------------|--------|--------|------|"
@@ -230,7 +271,7 @@ run_server_benchmarks() {
 
         # Progress indicator
         if [[ "$PROGRESS" -eq 1 ]]; then
-            echo "  [$test_num/$total_tests] Running $test_name (pp=$pp, tg=$tg) on $label @ $(hostport)..." >&2
+            echo "  [$test_num/$total_tests] Running $test_name (pp=$pp, tg=$tg) on $model @ $(hostport)..." >&2
         fi
 
         # Accumulate results across runs
@@ -310,6 +351,7 @@ main() {
         case $1 in
             -s|--server) SERVER="$2"; shift 2 ;;
             --model-label) MODEL_LABEL="$2"; shift 2 ;;
+            --quant-label|--quant) QUANT_LABEL="$2"; shift 2 ;;
             --gpu-label) GPU_LABEL="$2"; shift 2 ;;
             -r|--runs) RUNS="$2"; shift 2 ;;
             -p|--progress) PROGRESS="$2"; shift 2 ;;
@@ -374,11 +416,17 @@ main() {
     preflight
 
     # Resolve labels
-    local label="$MODEL_LABEL"
-    if [[ -z "$label" ]]; then
-        label=$(default_model_label)
+    local raw_label="$MODEL_LABEL"
+    if [[ -z "$raw_label" ]]; then
+        raw_label=$(default_model_label)
     fi
+    local model quant
+    IFS='|' read -r model quant <<< "$(split_model_quant "$raw_label" "$QUANT_LABEL")"
     local gpu="$GPU_LABEL"
+    if [[ ! "$gpu" =~ \([^()]+\) ]]; then
+        echo "WARNING: --gpu-label '$gpu' should look like 'Tesla P40 (23040 MiB)'; using '$gpu (unknown)'." >&2
+        gpu="$gpu (unknown)"
+    fi
 
     local content_file
     content_file=$(mktemp)
@@ -386,7 +434,7 @@ main() {
     {
         echo "## $(date '+%Y-%m-%d %H:%M') - server ($(hostport))"
         echo ""
-        run_server_benchmarks "$label" "$gpu" "${selected[@]}"
+        run_server_benchmarks "$model" "$quant" "$gpu" "${selected[@]}"
     } > "$content_file"
 
     write_run_block "$content_file" "$output_file"
