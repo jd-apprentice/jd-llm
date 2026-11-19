@@ -2,7 +2,7 @@
 
 8-bit / chiptune YouTube channel: <https://www.youtube.com/@melodias8bit>
 
-This directory stores the channel content and the pipeline that generates it. Thumbnails and artwork come from models running locally on the Tesla P40; the music does not yet.
+This directory stores the channel content and the pipeline that generates it. Thumbnails and artwork come from models running on the local GPU server; the music does not yet.
 
 ## Pipeline
 
@@ -10,7 +10,7 @@ This directory stores the channel content and the pipeline that generates it. Th
 | --- | --- | --- |
 | Thumbnails and artwork | `stable-diffusion.cpp` + [MOSS-Image-SFT-GGUF](https://huggingface.co/unsloth/MOSS-Image-SFT-GGUF) | In use |
 | Music | [Suno](https://suno.com) | In use, not local |
-| Local music | [`audio.cpp`](https://github.com/0xShug0/audio.cpp) | To evaluate |
+| Local music | [`audio.cpp`](https://github.com/0xShug0/audio.cpp) | To evaluate on `192.168.88.30` |
 | Video | Not defined | Pending |
 
 ## Layout
@@ -69,6 +69,10 @@ Goal: replace Suno with local chiptune generation. `audio.cpp` exposes several m
 - `magenta_realtime_2`: Small 230M / Base 2.4B, instrumental, style prompt or reference audio, 48 kHz stereo, streaming mode.
 - `heartmula`, `minimax_music3`, `yue2`: fallbacks to compare.
 
+### CLI on the server
+
+Audio generation runs on the home server at `192.168.88.30`, not on this machine:
+
 ```bash
 # ACE-Step: text + duration, no lyrics
 audiocpp_cli --task gen --family ace_step --model models/Ace-Step1.5 --backend cuda \
@@ -80,6 +84,43 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
   --family magenta_realtime_2 --task gen --backend cuda \
   --text "8-bit chiptune" --request-option duration_sec=10 --out music.wav
 ```
+
+### Server mode
+
+`audiocpp_server` keeps the model resident and exposes it over the LAN, so the workstation only sends requests:
+
+```json
+{
+  "host": "0.0.0.0",
+  "port": 8080,
+  "backend": "cuda",
+  "device": 0,
+  "lazy_load": true,
+  "models": [
+    {
+      "id": "ace-step",
+      "family": "ace_step",
+      "path": "/models/Ace-Step1.5",
+      "task": "gen"
+    }
+  ]
+}
+```
+
+```bash
+build/bin/audiocpp_server --config server.json
+curl http://192.168.88.30:8080/health
+```
+
+Then generate from here:
+
+```bash
+curl http://192.168.88.30:8080/v1/tasks/run \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"ace-step","request":{"text":"8-bit chiptune, nostalgic, instrumental","duration_seconds":60}}'
+```
+
+The `request` object reuses the CLI fields. The default config binds `127.0.0.1`, so `host` has to be `0.0.0.0` or the LAN IP for another machine to reach the server.
 
 ## Conventions
 
