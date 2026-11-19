@@ -22,11 +22,12 @@ projects/melodias8bit/
 │   └── NN-slug.md       # one entry per video: concept, prompt, seed, status
 └── assets/
     ├── thumbnails/      # 1280x720 thumbnails, same slug as the entry
-    │   └── unassigned/  # generated art with no entry yet
-    ├── images/          # branding and misc images not tied to a video
+    ├── images/          # random GPU generations and misc art
     ├── audio/           # final tracks
     └── video/           # final render (gitignored, lives on YouTube)
 ```
+
+`assets/images/` keeps one-off generations that are not tied to a video.
 
 ## Image setup
 
@@ -82,7 +83,7 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
 
 ## Conventions
 
-- Thumbnail at 16:9, 1280x720.
+- Thumbnail at 16:9, 1280x720, under 2 MB (YouTube's limit). 1920x1080 is also valid.
 - Prompt in English, in this order: subject, action, scene, style, mood, lighting.
 - Aspect ratio comes from `-W`/`-H`, not from flags inside the prompt. `--ar 16:9` is Midjourney syntax and `sd-cli` ignores it.
 - One fixed seed per series to keep visual consistency across videos.
@@ -98,11 +99,9 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
 | 04 | [Rainy window](videos/04-rainy-window.md) | pending | pending | lo-fi + soft chiptune |
 | 05 | [Retro-futuristic train](videos/05-retro-train.md) | pending | pending | vaporwave + chiptune |
 
-Unassigned art sits in `assets/thumbnails/unassigned/` until it gets an entry.
-
 ## Adding a video
 
 1. Copy the structure of an existing entry into `videos/NN-slug.md`.
-2. Generate the thumbnail and save it as `assets/thumbnails/NN-slug.png`.
+2. Generate the thumbnail at 1280x720 and save it as `assets/thumbnails/NN-slug.png`.
 3. Drop the final track into `assets/audio/NN-slug.mp3`.
 4. Update the video table above and the status field of the entry.
