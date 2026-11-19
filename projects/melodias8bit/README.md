@@ -150,6 +150,8 @@ curl http://192.168.88.38:8090/v1/tasks/run \
 
 `/v1/tasks/run` returns the WAV as base64 inside `audio`. The `request` object uses the same field names as the model spec, so it is `duration_sec` and `route`, not the CLI spellings. The default config binds `127.0.0.1`, so `host` has to be `0.0.0.0` or the LAN IP for another machine to reach the server.
 
+Duration is advisory on the server path: asking for 30 s returned 46 s and asking for 60 s returned 129 s, because the planner picks the take length. Use the CLI with `--duration-seconds` when the exact length matters.
+
 ## Conventions
 
 - Thumbnail at 16:9, 1280x720, under 2 MB (YouTube's limit). This is the size YouTube recommends; 1920x1080 adds no visible detail in the feed and its truecolor PNG usually exceeds 2 MB.
