@@ -103,6 +103,12 @@ See [examples/](examples/) for projects generated with the local models:
 - [veterinary-web](examples/veterinary-web/) — live at [local-llm-example-1.jonathan.com.ar](https://local-llm-example-1.jonathan.com.ar)
 - [retro-games](examples/retro-games/) — live at [local-llm-example-2.jonathan.com.ar](https://local-llm-example-2.jonathan.com.ar)
 
+## Projects
+
+Content produced with the local stack, documented with its generation pipeline:
+
+- [melodias8bit](projects/melodias8bit/): 8-bit/chiptune music channel, live at [@melodias8bit](https://www.youtube.com/@melodias8bit). Thumbnails with `stable-diffusion.cpp` + MOSS-Image, music research on `audio.cpp`.
+
 ## Blog
 
 - [Correr LLMs en tu casa con una Tesla P40: crónica de un quilombo hermoso](blog/corriendo-llms-tesla-p40.md)
