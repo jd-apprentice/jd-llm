@@ -83,7 +83,7 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
 
 ## Conventions
 
-- Thumbnail at 16:9, 1280x720, under 2 MB (YouTube's limit). 1920x1080 is also valid.
+- Thumbnail at 16:9, 1280x720, under 2 MB (YouTube's limit). This is the size YouTube recommends; 1920x1080 adds no visible detail in the feed and its truecolor PNG usually exceeds 2 MB.
 - Prompt in English, in this order: subject, action, scene, style, mood, lighting.
 - Aspect ratio comes from `-W`/`-H`, not from flags inside the prompt. `--ar 16:9` is Midjourney syntax and `sd-cli` ignores it.
 - One fixed seed per series to keep visual consistency across videos.
