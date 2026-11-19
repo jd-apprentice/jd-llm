@@ -2,7 +2,7 @@
 
 8-bit / chiptune YouTube channel: <https://www.youtube.com/@melodias8bit>
 
-This directory stores the channel content and the pipeline that generates it. Thumbnails and artwork come from models running on the local GPU server; the music does not yet.
+This directory stores the channel content and the pipeline that generates it. Thumbnails and artwork come from models running on the local GPU server, and the music runs there too through `audio.cpp`.
 
 ## Pipeline
 
@@ -10,7 +10,7 @@ This directory stores the channel content and the pipeline that generates it. Th
 | --- | --- | --- |
 | Thumbnails and artwork | `stable-diffusion.cpp` + [MOSS-Image-SFT-GGUF](https://huggingface.co/unsloth/MOSS-Image-SFT-GGUF) | In use |
 | Music | [Suno](https://suno.com) | In use, not local |
-| Local music | [`audio.cpp`](https://github.com/0xShug0/audio.cpp) | To evaluate on `192.168.88.30` |
+| Local music | [`audio.cpp`](https://github.com/0xShug0/audio.cpp) | Working on the GPU VM |
 | Video | Not defined | Pending |
 
 ## Layout
@@ -61,38 +61,65 @@ Generating a 16:9 thumbnail:
   -o assets/thumbnails/<slug>.png
 ```
 
-## Local audio
+## Audio
 
-Goal: replace Suno with local chiptune generation. `audio.cpp` exposes several music families through its CLI and server:
+Audio generation runs on the GPU VM inside the Proxmox host at `192.168.88.30` (currently `192.168.88.38` over DHCP); the workstation only sends requests. The GPU is the Tesla P40, passed through to that VM, so `audio.cpp` cannot run on the host itself.
 
-- `ace_step`: ACE-Step 1.5 (Turbo / Base / XL), text + lyrics, 50+ languages, `text2music` route.
+Available families, all through `audio.cpp`:
+
+- `ace_step`: ACE-Step 1.5 (Turbo / Base / XL), text + optional lyrics, 50+ languages, `text2music` and edit routes.
 - `magenta_realtime_2`: Small 230M / Base 2.4B, instrumental, style prompt or reference audio, 48 kHz stereo, streaming mode.
 - `heartmula`, `minimax_music3`, `yue2`: fallbacks to compare.
 
-### CLI on the server
+### Build (on the GPU VM)
 
-Audio generation runs on the home server at `192.168.88.30`, not on this machine:
+Verified on Ubuntu 26.04.1, Tesla P40, driver 580.178.04, CUDA 12.4, GCC 13:
 
 ```bash
-# ACE-Step: text + duration, no lyrics
-audiocpp_cli --task gen --family ace_step --model models/Ace-Step1.5 --backend cuda \
-  --task-route text2music --text "8-bit chiptune, nostalgic, instrumental" \
-  --duration-seconds 60 --out chiptune.wav
+git clone --recursive --depth 1 --shallow-submodules https://github.com/0xShug0/audio.cpp
+cd audio.cpp
+CC=gcc-13 CXX=g++-13 scripts/build_linux.sh --deployment-build --backend cuda \
+  --cuda-arch 61 --model-set custom --models ace_step,magenta_realtime_2 \
+  -j 4 --target audiocpp_cli --target audiocpp_server
+```
 
-# Magenta RealTime 2: short clip from a style prompt
-audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
+Binaries land in `build/linux-cuda-release/bin/`. Two flags are not optional: GCC 13 because CUDA 12.4 rejects newer host compilers, and `--cuda-arch 61` because CUDA 13.x dropped Pascal. `--model-set custom` skips the other 140+ families. The whole build takes about 13 minutes on 4 vCPU.
+
+### Models
+
+| Family | File | Size |
+| --- | --- | --- |
+| `magenta_realtime_2` | `magenta-rt2-small-f16.gguf` | 1.5 GB |
+| `ace_step` | `ace-step-1.5-turbo-bf16.gguf` | 10.1 GB |
+
+Both come from `audio-cpp/audio.cpp-gguf` and `audio-cpp/Magenta-RealTime-2-GGUF`. Use the ACE-Step bf16 package: `docs/gguf.md` lists the `q8_0` one as failing planner sampling.
+
+Measured on the P40: 10 s with Magenta in 5.2 s of wall time, 60 s with ACE-Step Turbo in 18.7 s including the 10 GB load. CUDA graphs are disabled on Pascal, which is expected.
+
+### CLI on the VM
+
+```bash
+# Magenta RealTime 2: 10 s clip from a style prompt
+audiocpp_cli --model /models/Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
   --family magenta_realtime_2 --task gen --backend cuda \
-  --text "8-bit chiptune" --request-option duration_sec=10 --out music.wav
+  --text "8-bit chiptune, nostalgic, instrumental" \
+  --request-option duration_sec=10 --out music.wav
+
+# ACE-Step: 60 s instrumental, turbo checkpoint
+audiocpp_cli --model /models/ACE-Step1.5-GGUF/turbo/ace-step-1.5-turbo-bf16.gguf \
+  --family ace_step --task gen --backend cuda --task-route text2music \
+  --text "8-bit chiptune, nostalgic, instrumental, soft square wave lead" \
+  --duration-seconds 60 --out chiptune.wav
 ```
 
 ### Server mode
 
-`audiocpp_server` keeps the model resident and exposes it over the LAN, so the workstation only sends requests:
+`audiocpp_server` keeps the model resident and exposes it over the LAN:
 
 ```json
 {
   "host": "0.0.0.0",
-  "port": 8080,
+  "port": 8090,
   "backend": "cuda",
   "device": 0,
   "lazy_load": true,
@@ -100,7 +127,7 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
     {
       "id": "ace-step",
       "family": "ace_step",
-      "path": "/models/Ace-Step1.5",
+      "path": "/models/ACE-Step1.5-GGUF/turbo/ace-step-1.5-turbo-bf16.gguf",
       "task": "gen"
     }
   ]
@@ -108,19 +135,20 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
 ```
 
 ```bash
-build/bin/audiocpp_server --config server.json
-curl http://192.168.88.30:8080/health
+build/linux-cuda-release/bin/audiocpp_server --config server.json
+curl http://192.168.88.38:8090/health
 ```
 
 Then generate from here:
 
 ```bash
-curl http://192.168.88.30:8080/v1/tasks/run \
+curl http://192.168.88.38:8090/v1/tasks/run \
   -H 'Content-Type: application/json' \
-  -d '{"model":"ace-step","request":{"text":"8-bit chiptune, nostalgic, instrumental","duration_seconds":60}}'
+  -d '{"model":"ace-step","request":{"text":"8-bit chiptune, nostalgic, instrumental","duration_sec":60}}' \
+  | python3 -c 'import json,base64,sys; open("out.wav","wb").write(base64.b64decode(json.load(sys.stdin)["audio"]))'
 ```
 
-The `request` object reuses the CLI fields. The default config binds `127.0.0.1`, so `host` has to be `0.0.0.0` or the LAN IP for another machine to reach the server.
+`/v1/tasks/run` returns the WAV as base64 inside `audio`. The `request` object uses the same field names as the model spec, so it is `duration_sec` and `route`, not the CLI spellings. The default config binds `127.0.0.1`, so `host` has to be `0.0.0.0` or the LAN IP for another machine to reach the server.
 
 ## Conventions
 
