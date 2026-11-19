@@ -1,3 +1,6 @@
 .commandcode
 .omo
 models/
+
+# Rendered video uploads live on YouTube, not in git
+projects/*/assets/video/
