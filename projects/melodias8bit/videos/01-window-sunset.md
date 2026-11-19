@@ -1,14 +1,16 @@
-# 01 · Atardecer en la ventana
+# 01 · Sunset by the window
 
-- **Título:** late night 8-bit gaming & chill 🎮🌙
-- **Estado:** pendiente de miniatura y audio
-- **Música:** chiptune lento + lo-fi, instrumental
+![Thumbnail](../assets/thumbnails/01-window-sunset.png)
+
+- **Title:** late night 8-bit gaming & chill 🎮🌙
+- **Status:** thumbnail ready, audio pending
+- **Music:** slow chiptune + lo-fi, instrumental
 - **Seed:** 42
-- **Archivos:** `assets/thumbnails/01-window-sunset.png`, `assets/audio/01-window-sunset.mp3`
+- **Files:** `assets/thumbnails/01-window-sunset.png`, `assets/audio/01-window-sunset.mp3`
 
-## Concepto
+## Concept
 
-La clásica gamer melancólica. Una chica anime escuchando música en una habitación retro mientras ve el atardecer pixelado.
+The classic melancholic gamer. An anime girl listening to music in a retro bedroom while watching a pixelated sunset.
 
 ## Prompt
 
@@ -16,6 +18,6 @@ La clásica gamer melancólica. Una chica anime escuchando música en una habita
 A cute anime girl with headphones sitting by a window in a retro bedroom, looking outside at a neon cyberpunk city sunset, 8-bit pixel art style, detailed pixelated background, nostalgic mood, cozy lighting, 16:9 aspect ratio, YouTube thumbnail style
 ```
 
-## Notas
+## Notes
 
-- Primera ficha del canal, sirve como referencia de estructura.
+- First entry in the channel, doubles as the structural reference.

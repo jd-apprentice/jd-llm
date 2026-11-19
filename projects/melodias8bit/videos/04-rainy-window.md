@@ -1,14 +1,14 @@
-# 04 · Lluvia en la ventana
+# 04 · Rainy window
 
-- **Título:** pixelated rain & 8-bit melodies (sleep / relax) 🌧️🎧
-- **Estado:** pendiente de miniatura y audio
-- **Música:** lo-fi + chiptune suave, apto para dormir
+- **Title:** pixelated rain & 8-bit melodies (sleep / relax) 🌧️🎧
+- **Status:** thumbnail and audio pending
+- **Music:** lo-fi + soft chiptune, sleep friendly
 - **Seed:** 42
-- **Archivos:** `assets/thumbnails/04-rainy-window.png`, `assets/audio/04-rainy-window.mp3`
+- **Files:** `assets/thumbnails/04-rainy-window.png`, `assets/audio/04-rainy-window.mp3`
 
-## Concepto
+## Concept
 
-Una chica con capucha mirando las gotas de lluvia caer en un cristal, con una vibra relajante (lo-fi hip hop en versión pixel art).
+A girl in a hoodie watching raindrops slide down the glass, very relaxing vibe (lo-fi hip hop in pixel art).
 
 ## Prompt
 
@@ -16,6 +16,6 @@ Una chica con capucha mirando las gotas de lluvia caer en un cristal, con una vi
 An anime girl wearing a hoodie looking through a rainy window, wearing vintage headphones, cozy melancholy vibe, 8-bit pixel art, soft blue and purple color palette, rain drops on glass, 16:9 aspect ratio, YouTube thumbnail
 ```
 
-## Notas
+## Notes
 
-- Paleta azul/púrpura: la más fría del catálogo, contrasta con el atardecer de la 01.
+- Blue/purple palette: the coldest entry, contrasts with the sunset in 01.
