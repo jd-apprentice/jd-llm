@@ -25,6 +25,7 @@ The chosen track gets renamed to `assets/audio/NN-slug.mp3` and documented in th
 | `arcade-E-dreamy_turbo-8st_seed61401622_loop153s.mp3` | turbo | 8 | - | euler | 61401622 | 2:33 | 51 s |
 | `arcade-E-dreamy_base-32st-cfg5-heun_seed61401622_loop163s.mp3` | base | 32 | 5 | heun | 61401622 | 2:43 | 302 s |
 | `arcade-F-dreamy_base-50st-cfg7-heun_seed17434378_loop165s.mp3` | base | 50 | 7 | heun | 17434378 | 2:45 | 577 s |
+| `arcade-G-dreamy-structure_base-32st-cfg5-heun_seed42774356_loop203s.mp3` | base | 32 | 5 | heun | 42774356 | 3:23 | 366 s |
 | `arcade-server-draft_turbo-8st_seed42_take129s.mp3` | turbo | 8 | - | euler | 42 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed1337_take129s.mp3` | turbo | 8 | - | euler | 1337 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed2024_take129s.mp3` | turbo | 8 | - | euler | 2024 | 2:09 | server |
@@ -66,6 +67,14 @@ A nostalgic and cheerful retro arcade soundtrack blending dreamy synthwave with 
 synthwave and chiptune fusion, mid tempo, retro arcade at night, driving analog bassline, bright square wave lead, punchy 16-bit drums, neon energy, instrumental, no vocals
 ```
 
+**P5, P3 plus structure** (G):
+
+```text
+Structure: a short atmospheric intro of pads and arpeggio before the drums enter, then the full groove, and a proper outro that resolves and settles back to the opening chord instead of cutting off.
+```
+
+Appended to P3, generated at 210 s instead of 190 s so the intro and outro fit without eating the loop length.
+
 ## Reproduce a take
 
 ```bash
@@ -95,10 +104,12 @@ Every ACE-Step take ends with a fade-out, and long descriptions add an intro bui
 
 Takes A to D and the two nostalgic loops still carry the old 2 s crossfade, which smears the rhythm and makes the seam sound like a repeat. Everything from E onward uses the bar-aligned cut.
 
+G is a third variant, for when the take has an intentional intro and outro: keep both ends, trim the trailing silence and crossfade the last 3 s of the outro into the first 3 s of the intro. Both edges are sparse, so the blend reads as a breath instead of a jump.
+
 ## Findings
 
 - `bpm` and `keyscale` request options are ignored by the planner (`used_request_metadata 0` in the trace). Tempo and mood have to go in the text.
 - Turbo is capped at 8 steps and ignores `guidance_scale`, so extra steps only cost time.
 - Over the server API, `duration_sec` is advisory: asking for 60 s returned 129 s. The CLI respects `--duration-seconds` exactly.
 - Wall time on the P40 scales with steps times CFG: 8 steps in 51 s, 32 steps with CFG 5 in 302 s, 50 steps with CFG 7 in 577 s.
-- Takes generated from a caption without intro language start immediately at full energy, which is why the loop has no breathing room at the edges.
+- Takes generated from a caption without intro language start immediately at full energy, which is why the loop has no breathing room at the edges. Asking for structure in the prompt works: G opens 4 dB quieter than the groove and closes with a 3 s fade.
