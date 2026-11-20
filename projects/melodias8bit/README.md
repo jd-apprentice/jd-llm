@@ -94,7 +94,7 @@ Binaries land in `build/linux-cuda-release/bin/`. Two flags are not optional: GC
 
 Both come from `audio-cpp/audio.cpp-gguf` and `audio-cpp/Magenta-RealTime-2-GGUF`. Use the ACE-Step bf16 package: `docs/gguf.md` lists the `q8_0` one as failing planner sampling.
 
-Every take generated so far, with its model, steps, CFG, seed and wall time, is logged in [`assets/audio/drafts/README.md`](assets/audio/drafts/README.md).
+Every take generated so far, with its model, steps, CFG, seed and wall time, is logged in [`audio-takes.md`](audio-takes.md).
 
 Measured on the P40: 10 s with Magenta in 5.2 s of wall time, 60 s with ACE-Step Turbo in 18.7 s including the 10 GB load. CUDA graphs are disabled on Pascal, which is expected.
 
