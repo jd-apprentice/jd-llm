@@ -4,3 +4,6 @@ models/
 
 # Rendered video uploads live on YouTube, not in git
 projects/*/assets/video/
+
+# Audio takes stay local; only the log of takes is versioned
+projects/*/assets/audio/drafts/
