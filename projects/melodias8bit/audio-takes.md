@@ -27,6 +27,7 @@ The chosen track gets renamed to `assets/audio/NN-slug.mp3` and documented in th
 | `arcade-F-dreamy_base-50st-cfg7-heun_seed17434378_loop165s.mp3` | base | 50 | 7 | heun | 17434378 | 2:45 | 577 s |
 | `arcade-G-dreamy-structure_base-32st-cfg5-heun_seed42774356_loop203s.mp3` | base | 32 | 5 | heun | 42774356 | 3:23 | 366 s |
 | `arcade-H-dreamy-structure_xlsft-q8dit-32st-cfg5-heun_seed42774356_loop201s.mp3` | xl-sft q8dit | 32 | 5 | heun | 42774356 | 3:21 | 742 s |
+| `arcade-I-dreamy-refaudio_base-32st-cfg5-heun_seed45605460_loop204s.mp3` | base + `reference_audio` | 32 | 5 | heun | 45605460 | 3:24 | 375 s |
 | `arcade-server-draft_turbo-8st_seed42_take129s.mp3` | turbo | 8 | - | euler | 42 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed1337_take129s.mp3` | turbo | 8 | - | euler | 1337 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed2024_take129s.mp3` | turbo | 8 | - | euler | 2024 | 2:09 | server |
@@ -113,6 +114,23 @@ G is a third variant, for when the take has an intentional intro and outro: keep
 - `turbo` and `xl-turbo` are guidance-distilled: `num_inference_steps` caps at 8 and `guidance_scale` is ignored.
 - `base` and `xl-sft` take the CFG path, so steps and CFG matter.
 - Wall time, same prompt and seed at 32 steps, CFG 5, `heun`: base 366 s, xl-sft q8dit 742 s. A 190 s take at 50 steps and CFG 7 on base took 577 s, so the quality budget is linear in steps.
+
+## Reference conditioning
+
+`--request-option reference_audio=/path/on/server.wav` conditions timbre and style without copying the source. The file has to live on the server. I has been generated with a Suno track supplied as reference (kept on the VM at `/models/ref/suno-ref.wav`, not committed).
+
+Spectral balance, measured with Welch PSD:
+
+| Signal | Centroid | Low <200 Hz | Mid 200-2k | High 2-8k |
+| --- | --- | --- | --- | --- |
+| Suno reference | 598 Hz | 47% | 48% | 4% |
+| G (base, no reference) | 882 Hz | 72% | 18% | 8% |
+| H (xl-sft, no reference) | 518 Hz | 56% | 40% | 3% |
+| I (base + reference) | 782 Hz | 47% | 46% | 5% |
+
+I reproduces the low/mid split of the reference almost exactly, which is what G was missing: 72% of its energy sat below 200 Hz, so the melody was buried and the mix read as broken.
+
+Loudness: the Suno reference sits at -15.06 LUFS with a -3.03 dB true peak. I is mastered with `loudnorm=I=-15:TP=-1.5` to match, landing at -15.19 LUFS.
 
 ## Findings
 
