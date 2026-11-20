@@ -95,7 +95,7 @@ audiocpp_cli --model Magenta-RealTime-2-GGUF/magenta-rt2-small-f16.gguf \
 | # | Video | Thumbnail | Audio | Music |
 | --- | --- | --- | --- | --- |
 | 01 | [Sunset by the window](videos/01-window-sunset.md) | ready | pending | slow chiptune + lo-fi |
-| 02 | [Arcade room](videos/02-arcade-room.md) | ready | pending | synthwave + chiptune |
+| 02 | [Arcade room](videos/02-arcade-room.md) | ready | ready | synthwave + chiptune |
 | 03 | [90s desk](videos/03-retro-desk.md) | ready | pending | calm chiptune |
 | 04 | [Rainy window](videos/04-rainy-window.md) | pending | pending | lo-fi + soft chiptune |
 | 05 | [Retro-futuristic train](videos/05-retro-train.md) | pending | pending | vaporwave + chiptune |

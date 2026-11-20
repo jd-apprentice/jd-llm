@@ -28,6 +28,8 @@ The chosen track gets renamed to `assets/audio/NN-slug.mp3` and documented in th
 | `arcade-G-dreamy-structure_base-32st-cfg5-heun_seed42774356_loop203s.mp3` | base | 32 | 5 | heun | 42774356 | 3:23 | 366 s |
 | `arcade-H-dreamy-structure_xlsft-q8dit-32st-cfg5-heun_seed42774356_loop201s.mp3` | xl-sft q8dit | 32 | 5 | heun | 42774356 | 3:21 | 742 s |
 | `arcade-I-dreamy-refaudio_base-32st-cfg5-heun_seed45605460_loop204s.mp3` | base + `reference_audio` | 32 | 5 | heun | 45605460 | 3:24 | 375 s |
+
+Take I is the one used by video 02: it is copied to `assets/audio/02-arcade-room.mp3` at 320 kbps.
 | `arcade-server-draft_turbo-8st_seed42_take129s.mp3` | turbo | 8 | - | euler | 42 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed1337_take129s.mp3` | turbo | 8 | - | euler | 1337 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed2024_take129s.mp3` | turbo | 8 | - | euler | 2024 | 2:09 | server |
