@@ -18,6 +18,7 @@ This directory stores the channel content and the pipeline that generates it. Th
 ```
 projects/melodias8bit/
 ├── README.md            # this file: pipeline, conventions and catalog
+├── audio-takes.md       # log of every generated take and its configuration
 ├── videos/
 │   └── NN-slug.md       # one entry per video: concept, prompt, seed, status
 └── assets/
