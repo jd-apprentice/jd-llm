@@ -26,6 +26,7 @@ The chosen track gets renamed to `assets/audio/NN-slug.mp3` and documented in th
 | `arcade-E-dreamy_base-32st-cfg5-heun_seed61401622_loop163s.mp3` | base | 32 | 5 | heun | 61401622 | 2:43 | 302 s |
 | `arcade-F-dreamy_base-50st-cfg7-heun_seed17434378_loop165s.mp3` | base | 50 | 7 | heun | 17434378 | 2:45 | 577 s |
 | `arcade-G-dreamy-structure_base-32st-cfg5-heun_seed42774356_loop203s.mp3` | base | 32 | 5 | heun | 42774356 | 3:23 | 366 s |
+| `arcade-H-dreamy-structure_xlsft-q8dit-32st-cfg5-heun_seed42774356_loop201s.mp3` | xl-sft q8dit | 32 | 5 | heun | 42774356 | 3:21 | 742 s |
 | `arcade-server-draft_turbo-8st_seed42_take129s.mp3` | turbo | 8 | - | euler | 42 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed1337_take129s.mp3` | turbo | 8 | - | euler | 1337 | 2:09 | server |
 | `arcade-server-draft_turbo-8st_seed2024_take129s.mp3` | turbo | 8 | - | euler | 2024 | 2:09 | server |
@@ -104,7 +105,14 @@ Every ACE-Step take ends with a fade-out, and long descriptions add an intro bui
 
 Takes A to D and the two nostalgic loops still carry the old 2 s crossfade, which smears the rhythm and makes the seam sound like a repeat. Everything from E onward uses the bar-aligned cut.
 
-G is a third variant, for when the take has an intentional intro and outro: keep both ends, trim the trailing silence and crossfade the last 3 s of the outro into the first 3 s of the intro. Both edges are sparse, so the blend reads as a breath instead of a jump.
+G is a third variant, for when the take has an intentional intro and outro: keep both ends, trim the trailing silence and crossfade the last 3 s of the outro into the first 3 s of the intro. Both edges are sparse, so the blend reads as a breath instead of a jump. H uses the same recipe.
+
+## Samplers and checkpoints
+
+- `sampler_mode` only accepts `euler` and `heun`. `heun` runs two evaluations per step, so it costs roughly twice the time and usually gives cleaner edges. `euler` is the fast path.
+- `turbo` and `xl-turbo` are guidance-distilled: `num_inference_steps` caps at 8 and `guidance_scale` is ignored.
+- `base` and `xl-sft` take the CFG path, so steps and CFG matter.
+- Wall time, same prompt and seed at 32 steps, CFG 5, `heun`: base 366 s, xl-sft q8dit 742 s. A 190 s take at 50 steps and CFG 7 on base took 577 s, so the quality budget is linear in steps.
 
 ## Findings
 
