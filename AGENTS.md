@@ -2,7 +2,13 @@
 
 ## What this repo is
 
-Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) benchmarks the model loaded on a remote `llama-server` via `POST /completion` timings and outputs markdown results into `BENCHMARKS.md`. Server-only client: no local inference, no compiled app, no package manager.
+Local LLM benchmarking toolkit, plus the documentation for the local lab. The benchmark itself is a single Bash script (`scripts/bench.sh`) that measures the model loaded on a remote `llama-server` via `POST /completion` timings and writes markdown results into `BENCHMARKS.md`. Server-only client: no local inference, no compiled app, no package manager.
+
+The rest of the repo:
+
+- `docs/` holds serving and long-context reports, including the lab mapping for the music and image pipeline.
+- `blog/` holds long-form posts and social drafts.
+- `examples/` holds projects generated with local models.
 
 ## Hardware (benchmark context)
 
@@ -19,8 +25,8 @@ Local LLM benchmarking toolkit. Single Bash script (`scripts/bench.sh`) benchmar
 - awk
 
 ```bash
-git clone https://github.com/jd-apprentice/llm-setup.git
-cd llm-setup
+git clone https://github.com/jd-apprentice/jd-llm.git
+cd jd-llm
 chmod +x scripts/bench.sh
 ./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40 (23040 MiB)" --output BENCHMARKS.md
 ```
@@ -37,7 +43,7 @@ CI (`.github/workflows/shell.yaml`) runs `ludeeus/action-shellcheck@master` on a
 
 ## Pre-commit hook
 
-`.githooks/pre-commit` — runs `shellcheck` on staged `.sh` files, validates `BENCHMARKS.md` format (H3 title pattern, table columns, test order). Not auto-enabled:
+`.githooks/pre-commit` runs `shellcheck` on staged `.sh` files, validates `BENCHMARKS.md` format (H3 title pattern, table columns, test order). Not auto-enabled:
 
 ```bash
 git config core.hooksPath .githooks
@@ -63,7 +69,7 @@ Table columns: `Test | Run | Avg Time | Tokens Processed | PP T/s | TG T/s | TTF
 
 - **Dependencies**: `curl`, `jq`, `awk` (`LC_ALL=C` forced in-script for `.` decimals)
 - **Env overrides**: `LLAMA_SERVER_URL` (default `http://192.168.88.33:8080`), `RUNS`, `PROGRESS`
-- **Flags**: `-s/--server URL`, `--model-label L` (default: `/props` model_path basename), `--quant-label L` (default: auto-detected from filename, e.g. `Q4_K_M`), `--gpu-label L` (default: `remote`; pass full string like `"Tesla P40 (23040 MiB)"` — the API doesn't expose GPU info), `-r/--runs`, `-p/--progress`, `--test NAME` (repeatable, smoke test), `-o/--output FILE`
+- **Flags**: `-s/--server URL`, `--model-label L` (default: `/props` model_path basename), `--quant-label L` (default: auto-detected from filename, e.g. `Q4_K_M`), `--gpu-label L` (default: `remote`; pass full string like `"Tesla P40 (23040 MiB)"`; the API doesn't expose GPU info), `-r/--runs`, `-p/--progress`, `--test NAME` (repeatable, smoke test), `-o/--output FILE`
 - **Method**: token-id array prompt of exactly `pp` tokens, `n_predict=tg`, `temperature: 0`, `cache_prompt: false`, `ignore_eos: true` (forces full-length generation); parses `.timings` (`prompt_ms`/`predicted_ms` → Avg Time/TTFT, `prompt_per_second`/`predicted_per_second` → PP/TG T/s). Raw control bytes in generated content are stripped before `jq`.
 - **`-o/--output FILE`**: always appends a timestamped block. Does NOT overwrite the whole file.
 - Server must be started with enough context (`-c`) for the largest test (`pp4096+tg3072`) and the desired model. Multi-model and NGL sweeps are manual (restart server per config).
@@ -80,12 +86,12 @@ cmake --build build --target llama-app -j 2
 
 - Install: `cp build/bin/llama-server ~/.local/bin/llama-server`, then copy `build/bin/*.so*` to a library path (e.g. `/usr/local/lib`) and run `ldconfig`.
 - Build against `ggml-org/llama.cpp` branch `b10826`: `git clone --depth 1 --branch b10826 https://github.com/ggml-org/llama.cpp`
-- Do **not** run `llama update` — it replaces the CUDA build with a CPU-only binary.
+- Do **not** run `llama update`: it replaces the CUDA build with a CPU-only binary.
 - Sanity check: start the server and confirm the log reports `CUDA0: Tesla P40`, then `curl http://<host>:8080/health` responds once the model is loaded.
 
 ## `models/` directory
 
-Gitignored (`.gitignore`). `bench.sh` no longer downloads models — it benches whatever the server has loaded. The directory remains for manually staged `.gguf` files served by `llama-server -m`.
+Gitignored (`.gitignore`). `bench.sh` no longer downloads models: it benches whatever the server has loaded. The directory remains for manually staged `.gguf` files served by `llama-server -m`.
 
 ## Commit style
 
@@ -93,7 +99,15 @@ Conventional commits: `feat(...)`, `fix(...)`, `chore(...)`, `docs(...)`.
 
 ## Plans
 
-`plans/base.md` — benchmark plan (model groups, time estimates, output conventions). Consult before adding/removing models.
+`plans/base.md`: benchmark plan (model groups, time estimates, output conventions). Consult before adding/removing models.
+
+## Content and docs
+
+- **Automated pipeline:** [melodias-studio](https://github.com/melodias8bit/melodias-studio) is the source of truth for the music, thumbnail and video flow. This repo documents the local lab around it, not a fork of its flags.
+- **Lab mapping:** `docs/melodias-studio-local-lab.md` covers hosts, ports, VRAM order and operational gotchas. Update it when a service, model or host changes.
+- **Channel content:** lives in the [melodias8bit](https://github.com/melodias8bit) org, not in this repo. jd-llm only documents the lab and links to it.
+- **Blog:** `blog/` is plain Markdown in English, no em dashes. Add a new post to `blog/README.md` and to the Blog section of the top-level `README.md`.
+- **Social drafts:** `blog/linkedin-*.md` are drafts, not published content, and are the only Spanish content in the repo. No API keys or private URLs in them.
 
 ## References
 

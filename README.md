@@ -26,10 +26,10 @@ Memory: 8GB DDR4 2400 MHz x2
 - awk
 
 ```bash
-git clone https://github.com/jd-apprentice/llm-setup.git
-cd llm-setup
+git clone https://github.com/jd-apprentice/jd-llm.git
+cd jd-llm
 chmod +x scripts/bench.sh
-./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40" --output BENCHMARKS.md
+./scripts/bench.sh --server http://192.168.88.33:8080 --gpu-label "Tesla P40 (23040 MiB)" --output BENCHMARKS.md
 ```
 
 The server must already be running with the desired model:
@@ -68,7 +68,7 @@ Relevant constraints:
 
 - The NVIDIA `580` driver branch is the **last** one supporting Pascal and tops out at CUDA 13.0.
 - CUDA Toolkit **13.x dropped support for architectures older than sm_70**, so the build must use a CUDA 12.x toolkit (12.8 in this setup). The 580 driver runs CUDA 12.x applications without issues.
-- The `llama.app` Linux installer only provides CUDA builds compiled against the newest CUDA release, whose minimum driver the `580` branch cannot satisfy. Its probe silently falls back to a CPU-only binary (no CUDA devices visible) — another reason to build from source.
+- The `llama.app` Linux installer only provides CUDA builds compiled against the newest CUDA release, whose minimum driver the `580` branch cannot satisfy. Its probe silently falls back to a CPU-only binary (no CUDA devices visible). Another reason to build from source.
 
 ```bash
 git clone --depth 1 --branch b10826 https://github.com/ggml-org/llama.cpp
@@ -92,26 +92,33 @@ Notes:
 
 See [BENCHMARKS.md](BENCHMARKS.md) for `bench.sh` results.
 
-Long-context setup reports live in [docs/](docs/):
+## Docs
+
+Reports and lab documentation live in [docs/](docs/):
 
 - [Qwen3.8-27B at 128k on Tesla P40 (MTP + passthrough)](docs/tesla-p40-qwen3.8-27b-128k-mtp.md)
+- [Qwen3.6-35B-A3B at 128k on Tesla P40 (MTP)](docs/tesla-p40-qwen3.6-35b-128k-mtp.md)
+- [Melodias8bit on the local lab](docs/melodias-studio-local-lab.md): hosts, services, VRAM order and gotchas for the local music and image pipeline.
 
 ## Examples
 
 See [examples/](examples/) for projects generated with the local models:
 
-- [veterinary-web](examples/veterinary-web/) — live at [local-llm-example-1.jonathan.com.ar](https://local-llm-example-1.jonathan.com.ar)
-- [retro-games](examples/retro-games/) — live at [local-llm-example-2.jonathan.com.ar](https://local-llm-example-2.jonathan.com.ar)
+- [veterinary-web](examples/veterinary-web/), live at [local-llm-example-1.jonathan.com.ar](https://local-llm-example-1.jonathan.com.ar)
+- [retro-games](examples/retro-games/), live at [local-llm-example-2.jonathan.com.ar](https://local-llm-example-2.jonathan.com.ar)
 
 ## Projects
 
-Content produced with the local stack, documented with its generation pipeline:
+Content produced with the local stack lives outside this repo:
 
-- [melodias8bit](projects/melodias8bit/): 8-bit/chiptune music channel, live at [@melodias8bit](https://www.youtube.com/@melodias8bit). Thumbnails with `stable-diffusion.cpp` + MOSS-Image, music research on `audio.cpp`.
+- [melodias8bit](https://github.com/melodias8bit): 8-bit/chiptune music channel, live at [@melodias8bit](https://www.youtube.com/@melodias8bit). The channel content and catalog live in the org, and the pipeline is [melodias-studio](https://github.com/melodias8bit/melodias-studio) (Rust TUI/CLI with candidate pools, review, optional judge, mastering and video assembly). The lab mapping is in [docs/melodias-studio-local-lab.md](docs/melodias-studio-local-lab.md).
 
 ## Blog
 
-- [Correr LLMs en tu casa con una Tesla P40: crónica de un quilombo hermoso](blog/corriendo-llms-tesla-p40.md)
+Posts about the lab and what it produces, with an index in [blog/](blog/):
+
+- [Running LLMs at home with a Tesla P40: chronicle of a beautiful mess](blog/corriendo-llms-tesla-p40.md)
+- [From the first video to a local studio: 8-bit music and thumbnails with local models](blog/from-first-video-to-a-local-studio.md)
 
 ## References
 
